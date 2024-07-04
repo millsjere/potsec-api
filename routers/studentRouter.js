@@ -8,8 +8,7 @@ const router = express.Router();
 router.route('/api/u/login').post(login)
 router.route('/api/u/forgot-password').post(forgetUserPassword)
 router.route('/api/u/reset-password').post(resetUserPassword)
-router.route('/api/u/verify-account').post(protect, verifyUserAccount)
-router.route('/api/u/resend/email-verification').get(protect, resendEmailVerification)
+
 
 
 module.exports = router

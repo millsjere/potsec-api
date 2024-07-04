@@ -32,6 +32,7 @@ const staffSchema = new mongoose.Schema({
     department: { type: String },
     programme: { type: String },
     campus: { type: String },
+    role: { type: String, default: 'staff'},
     isLoginVerified: { type: Boolean, default: false },
     isEmailVerified: { type: Boolean, default: false },
     verificationCode: { type: String, select: false },

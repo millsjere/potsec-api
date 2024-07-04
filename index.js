@@ -12,7 +12,7 @@ const path = require('path')
 const studentRouter = require('./routers/studentRouter')//Routers
 const staffRouter = require('./routers/staffRouter')
 
-const whiteList = ["http://localhost:3000", "http://localhost:8080"]
+const whiteList = ["http://localhost:3000", "http://localhost:8080","http://localhost:8001"]
 const corsOptions = {
   origin: (origin, cb) => {
     if (whiteList.indexOf(origin) !== -1) {
@@ -38,7 +38,7 @@ app.use(cookieParser());
 
 // All Routes default //
 app.use(studentRouter)
-app.use(studentRouter)
+app.use(staffRouter)
 
 // Static Files //
 //app.use(express.static(path.join(__dirname, '/client/build')))

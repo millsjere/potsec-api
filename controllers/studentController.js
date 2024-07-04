@@ -360,30 +360,7 @@ exports.verifySMS = async (req, res) => {
     }
 }
 
-exports.resendSMS = async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id).select('+verificationCode +verificationCodeExpiry')
 
-        //send SMS code
-        const smsCode = genDigits()
-        user.verificationCode = smsCode
-        user.verificationCodeExpiry = new Date(Date.now() + 10 * 60 * 1000).getTime()
-        await user.save()
-        await sendSMS(user.phone, `Verification Code - ${smsCode}`)
-
-        //res to client
-        res.status(200).json({
-            status: "success"
-        });
-
-    } catch (error) {
-        res.status(400).json({
-            status: "failed",
-            error: error,
-            message: error.message,
-        });
-    }
-}
 
 // LOGOUT USER
 exports.logout = async (req, res) => {
