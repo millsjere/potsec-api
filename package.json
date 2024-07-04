@@ -1,0 +1,44 @@
+{
+  "name": "potsec",
+  "version": "1.0.0",
+  "description": "Prince Osei Tutu Secondary School",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "server": "nodemon index.js",
+    "client": "cd client && npm start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/millsjere/hiveafric.git"
+  },
+  "keywords": [
+    "potsec",
+    "osei-tutu",
+    "school",
+    "secondary"
+  ],
+  "author": "Jeremiah Mills",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/millsjere/hiveafric/issues"
+  },
+  "homepage": "https://github.com/millsjere/hiveafric#readme",
+  "dependencies": {
+    "@sendgrid/mail": "^7.7.0",
+    "axios": "^1.7.2",
+    "bcrypt": "^5.0.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.17.3",
+    "helmet": "^5.0.2",
+    "jsonwebtoken": "^8.5.1",
+    "mongodb": "^6.8.0",
+    "mongoose": "^6.3.0",
+    "multer": "^1.4.4",
+    "nodemon": "^2.0.15",
+    "slugify": "^1.6.5",
+    "twilio": "^3.80.0"
+  }
+}
