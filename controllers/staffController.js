@@ -2,7 +2,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt')
 const User = require('../models/staffModel')
-const { registerMessage, genericMessage } = require('../mailer/templates');
+const { registerMessage, genericMessage, codeMessage } = require('../mailer/templates');
 const sgMail = require('@sendgrid/mail')
 const { sendSMS } = require('../sms/ghsms')
 
@@ -24,6 +24,27 @@ const hashPassword = async (password) => {
     const hashPassword = await bcrypt.hash(password, salt);
     return hashPassword;
 }
+
+
+const genDigits = () => {
+    const code = Math.floor(100000 + Math.random() * 900000)
+    return code
+}
+
+const tokenMessage = (user, code) => {
+    const msg = {
+        to: `${user.email}`, // Change to your recipient
+        from: "POTSEC <noreply@hiveafrika.com>", // Change to your verified sender
+        subject: "Verify Login",
+        html: codeMessage(
+            user.surname,
+            `Use this code to verify your login request. If you did not initiate this, contact support@apps.potsec.edu.gh`,
+            code
+        ),
+    };
+    return msg
+}
+
 
 
 // USER SIGNUP
@@ -71,7 +92,7 @@ exports.createAccount = async (req, res) => {
 };
 
 // LOGIN
-exports.staffLogin = async(req, res) => {
+exports.staffLogin = async (req, res) => {
     try {
         const { email, password } = req.body
         const user = await User.findOne({ email }).select('+password +verificationCode +verificationCodeExpiry')
@@ -82,7 +103,7 @@ exports.staffLogin = async(req, res) => {
                 responseCode: 401,
                 message: 'Invaid credentials. Try again'
             });
-        }else{
+        } else {
             // verify password
             const verified = await bcrypt.compare(password, user.password);
             if (verified) {
@@ -90,15 +111,29 @@ exports.staffLogin = async(req, res) => {
                 let token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
                     expiresIn: "5h",
                 });
-    
+
                 //send SMS code
                 const smsCode = genDigits()
                 user.verificationCode = smsCode
                 user.verificationCodeExpiry = new Date(Date.now() + 10 * 60 * 1000).getTime()
                 user.isLoginVerified = false
                 await user.save()
-                await sendSMS(user.phone, `Verification Code - ${smsCode}`)
-    
+
+                // send email
+                const msg = {
+                    to: `${user.email}`, // Change to your recipient
+                    from: "POTSEC <noreply@hiveafrika.com>", // Change to your verified sender
+                    subject: "Verify Login",
+                    html: codeMessage(
+                        user.surname,
+                        `Use this code to verify your login request. If you did not initiate this, contact support@apps.potsec.edu.gh`,
+                        smsCode
+                    ),
+                };
+
+                sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+                await sgMail.send(msg);
+
                 //send res to client
                 res.status(200).json({
                     status: "success",
@@ -112,7 +147,7 @@ exports.staffLogin = async(req, res) => {
                 throw new Error("Invalid user credentials");
             }
         }
-        
+
     } catch (error) {
         res.status(401).json({
             status: "failed",
@@ -125,7 +160,7 @@ exports.staffLogin = async(req, res) => {
 }
 
 // RESEND SMS TOKEN
-exports.resendSMS = async (req, res) => {
+exports.resendEmailToken = async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('+verificationCode +verificationCodeExpiry')
 
@@ -134,7 +169,11 @@ exports.resendSMS = async (req, res) => {
         user.verificationCode = smsCode
         user.verificationCodeExpiry = new Date(Date.now() + 10 * 60 * 1000).getTime()
         await user.save()
-        await sendSMS(user.phone, `Verification Code - ${smsCode}`)
+
+        // send email
+        const msg = tokenMessage(user, smsCode)
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+        await sgMail.send(msg);
 
         //res to client
         res.status(200).json({
@@ -150,39 +189,24 @@ exports.resendSMS = async (req, res) => {
     }
 }
 
-// RESEND VERIFICATION EMAIL
-exports.resendEmailVerification = async (req, res) => {
+// VERIFY LOGIN
+exports.verifyUserAccount = async (req, res) => {
     try {
-        const user = await User.findById({ _id: req.user.id }).select('+verificationCode');
-        if (!user) {
-            throw Error("User account not found");
-        }
+        const user = await User.findOne({ verificationCode: req.body.code }).select('+verificationCode +verificationCodeExpiry')
+        if (!user) throw Error('Invalid authentication token')
+        if (user.verificationCodeExpiry < new Date().getTime()) throw Error('Two-Factor token has expired. Please resend token')
 
-        const activationToken = genDigits();
-        user.verificationCode = activationToken
+        // update user and save
+        user.verificationCode = undefined;
+        user.isLoginVerified = true;
         await user.save()
 
-        // send email to user
-        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-        const msg = {
-            to: `${user.email}`, // Change to your recipient
-            from: "POTSEC <noreply@hiveafrika.com>", // Change to your verified sender
-            subject: "Welcome to POTSEC",
-            html: registerMessage(
-                req,
-                "POTSEC",
-                user.firstname,
-                "To complete your registration process, use the code below to activate your account. Please ignore this email if you did not register with POTSEC",
-                activationToken
-            ),
-        };
-
-        await sgMail.send(msg);
-
-        // send res to client
+        //send res to client
         res.status(200).json({
             status: "success",
+            data: user
         });
+
     } catch (error) {
         res.status(401).json({
             status: "failed",
@@ -190,41 +214,41 @@ exports.resendEmailVerification = async (req, res) => {
             message: error.message,
         });
     }
-};
+}
 
 // FORGOT PASSWORD
 exports.staffForgetPassword = async (req, res) => {
     try {
-            // find user using email
-            const user = await User.findOne({ email: req.body.email }).select('+resetPasswordToken +resetPasswordExpires')
-            if (!user) throw Error('User account does not exist')
+        // find user using email
+        const user = await User.findOne({ email: req.body.email }).select('+resetPasswordToken +resetPasswordExpires')
+        if (!user) throw Error('User account does not exist')
 
-            //generate token to email
-            const activationToken = genDigits()
-            user.resetPasswordToken = activationToken
-            user.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000).getTime()
-            await user.save()
+        //generate token to email
+        const activationToken = genDigits()
+        user.resetPasswordToken = activationToken
+        user.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000).getTime()
+        await user.save()
 
-            // send email to user
-            // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-            // const msg = {
-            //     to: `${user.email}`, // Change to your recipient
-            //     from: "Hive Afrika <noreply@hiveafrika.com>", // Change to your verified sender
-            //     subject: "Hive Reset",
-            //     html: registerMessage(
-            //         "POTSEC",
-            //         user.firstname,
-            //         "To reset your password, use the code below to as the reset token. Please ignore this email if you did not register with POTSEC",
-            //         activationToken
-            //     ),
-            // };
-            // await sgMail.send(msg);
-            await sendSMS(user.phone, `Verification Code - ${activationToken}`)
+        // send email to user
+        // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+        // const msg = {
+        //     to: `${user.email}`, // Change to your recipient
+        //     from: "Hive Afrika <noreply@hiveafrika.com>", // Change to your verified sender
+        //     subject: "Hive Reset",
+        //     html: registerMessage(
+        //         "POTSEC",
+        //         user.firstname,
+        //         "To reset your password, use the code below to as the reset token. Please ignore this email if you did not register with POTSEC",
+        //         activationToken
+        //     ),
+        // };
+        // await sgMail.send(msg);
+        await sendSMS(user.phone, `Verification Code - ${activationToken}`)
 
-            //send res to client
-            res.status(200).json({
-                status: "success",
-            });
+        //send res to client
+        res.status(200).json({
+            status: "success",
+        });
     } catch (error) {
         res.status(400).json({
             status: "failed",
