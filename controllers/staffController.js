@@ -2,6 +2,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt')
 const User = require('../models/staffModel')
+const Student = require('../models/studentModel')
 const { registerMessage, genericMessage, codeMessage } = require('../mailer/templates');
 const sgMail = require('@sendgrid/mail')
 const { sendSMS } = require('../sms/ghsms')
@@ -29,6 +30,11 @@ const hashPassword = async (password) => {
 const genDigits = () => {
     const code = Math.floor(100000 + Math.random() * 900000)
     return code
+}
+
+const generatePassword = () => {
+    const code = Math.floor(10000000 + Math.random() * 900000)
+    return `POTSEC${code}`
 }
 
 const tokenMessage = (user, code) => {
@@ -310,3 +316,203 @@ exports.resetStaffPassword = async (req, res) => {
         });
     }
 }
+
+// FETCH ALL STUDENTS
+exports.getAllStudents = async (req, res) => {
+    try {
+        const allStudents = await Student.find().sort('-createdAt')
+        if (!allStudents) {
+            throw Error('Sorry, no student data found')
+        }
+
+        //send res to client
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200,
+            data: allStudents
+        })
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+// CREATE NEW STUDENT
+exports.createStudent = async (req, res) => {
+    try {
+        //chech if username and email has been taken
+        const userExist = await Student.findOne({ email: req.body.email })
+        if (userExist) {
+            //send res to client
+            res.status(400).json({
+                status: "failed",
+                responseCode: 400,
+                message: 'Student account already exist with this email'
+            });
+        } else {
+            const password = generatePassword()
+            const newPassword = await hashPassword(password);
+            const user = await Student.create({
+                ...req.body,
+                password: newPassword,
+            });
+
+            if (!user) {
+                throw Error("Something went wrong. Please try again");
+            }
+            await user.save();
+
+            //send email to new register user
+            sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+            const msg = {
+                to: user.email,
+                from: "POTSEC <noreply@hiveafrika.com>",
+                subject: "Welcome to POTSEC",
+                html: registerMessage(
+                    `Dear ${user.surname}`,
+                    "Welcome to POTSEC. To gain access to your portal, use the password code below to activate your account. Please ignore this email if you did not register with POTSEC",
+                    password
+                ),
+            };
+            await sgMail.send(msg);
+
+            //send res to client
+            res.status(200).json({
+                status: "success",
+                responseCode: 200,
+                message: 'Student account created successfully',
+                data: user
+            });
+
+        }
+
+    } catch (error) {
+        res.status(500).json({
+            status: "failed",
+            error: error,
+            message: error.message,
+        });
+    }
+};
+
+// UPDATE STUDENT PROFILE
+exports.updateStudentProfile = async (req, res) => {
+
+}
+
+// UPDATE STUDENT PHOTO
+exports.updateStudentPhoto = async (req, res) => {
+    try {
+        console.log('PHOTO ==> ', req.file)
+        if (!req.file) {
+            throw Error('Sorry, could not update profile picture')
+        }
+        //fetch user from database
+        const user = await Student.findOne({ index: req.params.id })
+        user.photo = req.file.path;
+        await user.save()
+
+        // send res to client
+        res.status(200).json({
+            status: 'success',
+        })
+
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+// UPDATE STUDENT DOCS
+exports.updateStudentDocuments = async (req, res) => {
+
+}
+
+// FETCH ALL STAFF
+exports.getAllStaff = async (req, res) => {
+    try {
+        const allStaff = await User.find().sort('-createdAt')
+        if (!allStaff) {
+            throw Error('Sorry, no student data found')
+        }
+
+        //send res to client
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200,
+            data: allStaff
+        })
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+
+// CREATE NEW STAFF
+exports.createStaff = async (req, res) => {
+    try {
+        //chech if username and email has been taken
+        const userExist = await Student.findOne({ email: req.body.email })
+        if (userExist) {
+            //send res to client
+            res.status(400).json({
+                status: "failed",
+                responseCode: 400,
+                message: 'Student account already exist with this email'
+            });
+        } else {
+            const password = generatePassword()
+            const newPassword = await hashPassword(password);
+            const user = await Student.create({
+                ...req.body,
+                password: newPassword,
+            });
+
+            if (!user) {
+                throw Error("Something went wrong. Please try again");
+            }
+
+            const activationToken = genDigits();
+            await user.save();
+
+            //send email to new register user
+            sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+            const msg = {
+                to: user.email,
+                from: "POTSEC <noreply@hiveafrika.com>",
+                subject: "Welcome to POTSEC",
+                html: registerMessage(
+                    user.surname,
+                    "Welcome to POTSEC. To gain access to your portal, use the password code below to activate your account. Please ignore this email if you did not register with POTSEC",
+                    activationToken
+                ),
+            };
+            await sgMail.send(msg);
+
+            //send res to client
+            res.status(200).json({
+                status: "success",
+                responseCode: 200,
+                message: 'Student account created successfully'
+            });
+
+        }
+
+    } catch (error) {
+        res.status(500).json({
+            status: "failed",
+            error: error,
+            message: error.message,
+        });
+    }
+};

@@ -1,10 +1,6 @@
 const mongoose = require('mongoose')
 
 const studentSchema = new mongoose.Schema({
-    indexNumber: {
-        type: String,
-        required: true
-    },
     othernames: {
         type: String,
         required: [true, 'Please provide a other names']
@@ -24,27 +20,71 @@ const studentSchema = new mongoose.Schema({
         select: false
     },
     phone: {
-        type: String,
-        unique: true,
-        required: true
+        mobile: { type: String },
+        whatsapp: { type: String }
     },
+    dob: String,
     photo: String,
-    gender: {
-        type: String,
-    },
+    documents: Array,
+    gender: String,
+    age: Number,
+    educationalLevel: String,
     address: {
-        type: String,
+        residence: { type: String },
+        town: { type: String },
+        district: { type: String },
+        region: { type: String }
     },
-    level: {
-        type: String,
+    nationalID: {
+        type: { type: String },
+        number: { type: String }
     },
-    programme: String,
-    department: String,
+    language: {
+        spoken: String,
+        written: String
+    },
+    enrollment: {
+        index: { type: String },
+        type: { type: String },
+        month: { type: String },
+        year: { type: String },
+        duration: { type: String },
+        programme: { type: String },
+        department: { type: String },
+        certification: { type: String },
+        certificationLevel: { type: String },
+        modeofTuition: { type: String },
+        session: { type: String },
+    },
+    payment: {
+        type: { type: String },
+        reference: { type: String },
+        transactionID: { type: String }
+    },
+    employment: {
+        isEmployed: { type: String },
+        currentJob: { type: String },
+        afterCompletion: { type: String },
+    },
+    health: {
+        anyCondition: String,
+        details: String
+    },
+    guardian: {
+        name: String,
+        phone: String,
+        relationship: String,
+    },
+    sponsor: {
+        name: String,
+        phone: String,
+        relationship: String,
+    },
+    emergency: {
+        name: String,
+        phone: String,
+    },
     campus: String,
-    batch: {
-        from: String,
-        to: String
-    },
     verificationCode: { type: String, select: false },
     verificationCodeExpiry: { type: Date, select: false },
     isFirstTime: { type: Boolean, default: true },
