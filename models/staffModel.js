@@ -2,7 +2,6 @@ const mongoose = require('mongoose')
 
 
 const staffSchema = new mongoose.Schema({
-    staffId: String,
     othernames: {
         type: String,
         required: [true, 'Please provide a other names']
@@ -22,19 +21,32 @@ const staffSchema = new mongoose.Schema({
         select: false
     },
     phone: {
-        type: String,
-        unique: true,
-        required: true
+        mobile: { type: String },
+        whatsapp: { type: String }
     },
     photo: { type: String },
     gender: { type: String },
-    address: { type: String },
-    department: { type: String },
-    programme: { type: String },
-    campus: { type: String },
-    role: { type: String, default: 'staff'},
+    address: {
+        residence: { type: String },
+        region: { type: String }
+    },
+    nationalID: {
+        type: { type: String },
+        number: { type: String }
+    },
+    language: {
+        spoken: String,
+        written: String
+    },
+    academics: {
+        department: { type: String },
+        staffID: { type: String },
+        staffEmail: { type: String },
+        programme: { type: String },
+        campus: { type: String }
+    },
+    role: { type: String, default: 'staff' },
     isLoginVerified: { type: Boolean, default: false },
-    isEmailVerified: { type: Boolean, default: false },
     verificationCode: { type: String, select: false },
     verificationCodeExpiry: { type: Date, select: false },
     resetPasswordToken: { type: String, select: false },

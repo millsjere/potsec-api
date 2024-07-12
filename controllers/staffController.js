@@ -439,7 +439,7 @@ exports.getAllStaff = async (req, res) => {
     try {
         const allStaff = await User.find().sort('-createdAt')
         if (!allStaff) {
-            throw Error('Sorry, no student data found')
+            throw Error('Sorry, no staff data found')
         }
 
         //send res to client
@@ -462,18 +462,19 @@ exports.getAllStaff = async (req, res) => {
 exports.createStaff = async (req, res) => {
     try {
         //chech if username and email has been taken
-        const userExist = await Student.findOne({ email: req.body.email })
+        const userExist = await User.findOne({ email: req.body.email })
+
         if (userExist) {
             //send res to client
             res.status(400).json({
                 status: "failed",
                 responseCode: 400,
-                message: 'Student account already exist with this email'
+                message: 'Staff account already exist with this email'
             });
         } else {
             const password = generatePassword()
             const newPassword = await hashPassword(password);
-            const user = await Student.create({
+            const user = await User.create({
                 ...req.body,
                 password: newPassword,
             });
@@ -481,8 +482,6 @@ exports.createStaff = async (req, res) => {
             if (!user) {
                 throw Error("Something went wrong. Please try again");
             }
-
-            const activationToken = genDigits();
             await user.save();
 
             //send email to new register user
@@ -490,11 +489,11 @@ exports.createStaff = async (req, res) => {
             const msg = {
                 to: user.email,
                 from: "POTSEC <noreply@hiveafrika.com>",
-                subject: "Welcome to POTSEC",
+                subject: "Staff Registration",
                 html: registerMessage(
-                    user.surname,
+                    `Dear ${user.surname}`,
                     "Welcome to POTSEC. To gain access to your portal, use the password code below to activate your account. Please ignore this email if you did not register with POTSEC",
-                    activationToken
+                    password
                 ),
             };
             await sgMail.send(msg);
@@ -503,7 +502,8 @@ exports.createStaff = async (req, res) => {
             res.status(200).json({
                 status: "success",
                 responseCode: 200,
-                message: 'Student account created successfully'
+                message: 'Staff account created successfully',
+                data: user
             });
 
         }
@@ -516,3 +516,29 @@ exports.createStaff = async (req, res) => {
         });
     }
 };
+
+// UPDATE STAFF PHOTO
+exports.updateStaffPhoto = async (req, res) => {
+    try {
+        console.log('PHOTO ==> ', req.file)
+        if (!req.file) {
+            throw Error('Sorry, could not update profile picture')
+        }
+        //fetch user from database
+        const user = await User.findOne({ index: req.params.id })
+        user.photo = req.file.path;
+        await user.save()
+
+        // send res to client
+        res.status(200).json({
+            status: 'success',
+        })
+
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}

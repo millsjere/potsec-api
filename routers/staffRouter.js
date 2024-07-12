@@ -1,9 +1,9 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff } = require('../controllers/staffController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto } = require('../controllers/staffController');
 const router = express.Router();
 const multer = require('multer');
-const { studentPhotoStorage } = require('../cloudinary');
+const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
 
 const uploadPhoto = multer({
     storage: studentPhotoStorage,
@@ -16,10 +16,21 @@ const uploadPhoto = multer({
         }
     }
 })
+const uploadStaffPhoto = multer({
+    storage: staffPhotoStorage,
+    fileFilter: (req, file, cb) => {
+        // console.log('RAW FILE FOR PROCESSING ==>', file)
+        if (file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+            return cb(null, true);
+        } else {
+            return cb(null, false);
+        }
+    }
+})
 
 
 // Auth Routes //
-router.route('/api/staff/create').post(createAccount)
+// router.route('/api/staff/create').post(createAccount)
 router.route('/api/staff/login').post(staffLogin)
 router.route('/api/staff/forgot-password').post(staffProtect, staffForgetPassword)
 router.route('/api/staff/reset-password').post(staffProtect, resetStaffPassword)
@@ -35,7 +46,9 @@ router.route('/api/student/document/:id').patch(adminProtect, updateStudentDocum
 
 // Admin -> Staff Routes //
 router.route('/api/staff/all').get(adminProtect, getAllStaff)
-router.route('/api/staff/new-staff').post(adminProtect, createStaff)
+router.route('/api/staff/create').post(adminProtect, createStaff)
+router.route('/api/staff/photo/:id').patch(adminProtect, uploadStaffPhoto.single('photo'), updateStaffPhoto)
+
 
 
 // Staff Routes //
