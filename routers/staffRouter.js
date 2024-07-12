@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto } = require('../controllers/staffController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment } = require('../controllers/staffController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
@@ -49,6 +49,12 @@ router.route('/api/staff/all').get(adminProtect, getAllStaff)
 router.route('/api/staff/create').post(adminProtect, createStaff)
 router.route('/api/staff/photo/:id').patch(adminProtect, uploadStaffPhoto.single('photo'), updateStaffPhoto)
 
+// Admin --> Department Routes //
+router.route('/api/staff/department').get(adminProtect, getAllDepartments)
+router.route('/api/staff/department/new').post(adminProtect, createDepartment)
+
+// Admin --> Programmes Routes //
+router.route('/api/staff/programmes').get(adminProtect, getAllStaff)
 
 
 // Staff Routes //

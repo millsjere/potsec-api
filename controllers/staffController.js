@@ -5,7 +5,8 @@ const User = require('../models/staffModel')
 const Student = require('../models/studentModel')
 const { registerMessage, genericMessage, codeMessage } = require('../mailer/templates');
 const sgMail = require('@sendgrid/mail')
-const { sendSMS } = require('../sms/ghsms')
+const { sendSMS } = require('../sms/ghsms');
+const Department = require('../models/departmentModel');
 
 
 const sampleData = {
@@ -535,7 +536,52 @@ exports.updateStaffPhoto = async (req, res) => {
         })
 
     } catch (error) {
-        res.status(500).json({
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+// GET ALL DEPARTMENT //
+exports.getAllDepartments = async( req, res) => {
+    try {
+        const dept = await Department.find().populate('programme')
+        if(!dept) throw Error('Sorry, could not fetch departments. Please try again');
+
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            data: dept
+        })
+        
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+// CREATE DEPARTMENT //
+exports.createDepartment = async(req, res) => {
+    try {
+        const dept = await Department.create({name: req.body.name})
+        if(!dept) throw Error('Sorry, department creation failed. Please try again');
+
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+        })
+        
+    } catch (error) {
+        res.status(404).json({
             status: 'failed',
             error: error,
             message: error.message
