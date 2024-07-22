@@ -744,3 +744,43 @@ exports.deleteProgramme = async (req, res) => {
         })
     }
 } 
+
+// ADD COURSE TO PROGRAMME //
+exports.addCourse = async (req, res) => {
+    try {
+        const { id, course } = req.body
+        const prog = await Programmes.findByIdAndUpdate(id, { $push: { courses: course }}, {new: true})
+        if (!prog) throw Error('Sorry, adding course failed. Please try again');
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success'
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+exports.removeCourse = async (req, res) => {
+    try {
+        const { id, course } = req.body
+        const prog = await Programmes.findByIdAndUpdate(id, { $pull: { courses: course }}, {new: true})
+        if (!prog) throw Error('Sorry, deleting course failed. Please try again');
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success'
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
