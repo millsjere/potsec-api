@@ -7,6 +7,7 @@ const { registerMessage, genericMessage, codeMessage } = require('../mailer/temp
 const sgMail = require('@sendgrid/mail')
 const { sendSMS } = require('../sms/ghsms');
 const Department = require('../models/departmentModel');
+const Programmes = require('../models/programmeModel');
 
 
 const sampleData = {
@@ -545,10 +546,10 @@ exports.updateStaffPhoto = async (req, res) => {
 }
 
 // GET ALL DEPARTMENT //
-exports.getAllDepartments = async( req, res) => {
+exports.getAllDepartments = async (req, res) => {
     try {
-        const dept = await Department.find().populate('programme')
-        if(!dept) throw Error('Sorry, could not fetch departments. Please try again');
+        const dept = await Department.find().populate('programmes')
+        if (!dept) throw Error('Sorry, could not fetch departments. Please try again');
 
         // send audit //
 
@@ -557,7 +558,7 @@ exports.getAllDepartments = async( req, res) => {
             status: 'success',
             data: dept
         })
-        
+
     } catch (error) {
         res.status(404).json({
             status: 'failed',
@@ -568,10 +569,10 @@ exports.getAllDepartments = async( req, res) => {
 }
 
 // CREATE DEPARTMENT //
-exports.createDepartment = async(req, res) => {
+exports.createDepartment = async (req, res) => {
     try {
-        const dept = await Department.create({name: req.body.name})
-        if(!dept) throw Error('Sorry, department creation failed. Please try again');
+        const dept = await Department.create({ name: req.body.name })
+        if (!dept) throw Error('Sorry, department creation failed. Please try again');
 
         // send audit //
 
@@ -579,7 +580,7 @@ exports.createDepartment = async(req, res) => {
         res.status(200).json({
             status: 'success',
         })
-        
+
     } catch (error) {
         res.status(404).json({
             status: 'failed',
@@ -588,3 +589,158 @@ exports.createDepartment = async(req, res) => {
         })
     }
 }
+// UPDATE DEPARTMENT //
+exports.updateDepartment = async (req, res) => {
+    try {
+        const { name } = req.body
+        const dept = await Department.findByIdAndUpdate({ _id: req.params.id }, { name })
+        if (!dept) throw Error('Sorry, department update failed. Please try again');
+
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+// DELETE DEPARTMENT //
+exports.deleteDepartment = async (req, res) => {
+    try {
+        await Department.findByIdAndDelete({ _id: req.params.id })
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+
+
+// GET ALL PROGRAMME //
+exports.getAllProgrammes = async (req, res) => {
+    try {
+        const prog = await Programmes.find().populate('department').sort({ createdAt: -1 })
+        if (!prog) throw Error('Sorry, could not fetch programmes. Please try again');
+
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            data: prog
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+exports.getOneProgramme = async (req, res) => {
+    try {
+        // console.log('Fetching one programme')
+        const prog = await Programmes.findById({ _id: req.params.id }).populate('department').select('-__v -_id')
+        if (!prog) throw Error('Sorry, could not fetch programmes. Please try again');
+
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            data: prog
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+// CREATE PRROGRAMME //
+exports.createProgramme = async (req, res) => {
+    try {
+        const { name, department, duration } = req.body
+        const prog = await Programmes.create({ name, department, duration })
+        if (!prog) throw Error('Sorry, programme creation failed. Please try again');
+
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+// CREATE PRROGRAMME //
+exports.updateProgramme = async (req, res) => {
+    try {
+        const { id, name, department, duration } = req.body
+        const prog = await Programmes.findByIdAndUpdate({ _id: id }, { name, department, duration })
+        if (!prog) throw Error('Sorry, programme update failed. Please try again');
+
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+// DELETE PROGRAMME //
+exports.deleteProgramme = async (req, res) => {
+    try {
+        await Programmes.findByIdAndDelete({ _id: req.params.id })
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+} 

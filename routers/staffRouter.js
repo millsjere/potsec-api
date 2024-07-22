@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment } = require('../controllers/staffController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme } = require('../controllers/staffController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
@@ -52,9 +52,17 @@ router.route('/api/staff/photo/:id').patch(adminProtect, uploadStaffPhoto.single
 // Admin --> Department Routes //
 router.route('/api/staff/department').get(adminProtect, getAllDepartments)
 router.route('/api/staff/department/new').post(adminProtect, createDepartment)
+router.route('/api/staff/department/:id').patch(adminProtect, updateDepartment)
+router.route('/api/staff/department/:id').delete(adminProtect, deleteDepartment)
+
 
 // Admin --> Programmes Routes //
-router.route('/api/staff/programmes').get(adminProtect, getAllStaff)
+router.route('/api/staff/programmes').get(adminProtect, getAllProgrammes)
+router.route('/api/staff/programmes/new').post(adminProtect, createProgramme)
+router.route('/api/staff/programmes/:id').get(adminProtect, getOneProgramme)
+router.route('/api/staff/programmes/:id').patch(adminProtect, updateProgramme)
+router.route('/api/staff/programmes/:id').delete(adminProtect, deleteProgramme)
+
 
 
 // Staff Routes //
