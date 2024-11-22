@@ -10,8 +10,6 @@ const AxiosInstance = axios.create({
 
 
 const sendSMS = async (phone, message) => {
-    //send SMS to user
-    // const message = `Congratulations ${user.name.firstname}, we are glad to inform you that your WePay account has been verified successfully. You are now eligible for a loan. Login to your dashboard to request for a Loan now`;
     await AxiosInstance.post(
         `${process.env.SMS_HANDLER}?senderhandle=POTSEC
         &recipients=${phone}&msg=${message}

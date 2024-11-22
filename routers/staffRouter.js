@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse } = require('../controllers/staffController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword } = require('../controllers/staffController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
@@ -38,9 +38,11 @@ router.route('/api/staff/resend-email-token').get(staffProtect, resendEmailToken
 router.route('/api/staff/verify-login').post(staffProtect, verifyUserAccount)
 
 // Admin -> Student Routes //
-router.route('/api/student/all').get(adminProtect, getAllStudents)
+router.route('/api/all-students').get(adminProtect, getAllStudents)
+router.route('/api/student/:id').get(adminProtect, getOneStudent)
 router.route('/api/student/create').post(adminProtect, createStudent)
 router.route('/api/student/profile/:id').patch(adminProtect, updateStudentProfile)
+router.route('/api/student/reset-password/:id').patch(adminProtect, updateStudentPassword)
 router.route('/api/student/photo/:id').patch(adminProtect, uploadPhoto.single('photo'), updateStudentPhoto)
 router.route('/api/student/document/:id').patch(adminProtect, updateStudentDocuments)
 

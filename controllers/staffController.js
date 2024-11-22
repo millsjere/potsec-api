@@ -341,6 +341,28 @@ exports.getAllStudents = async (req, res) => {
         })
     }
 }
+exports.getOneStudent = async (req, res) => {
+    try {
+        // console.log('Fetching one student data')
+        const student = await Student.findById({ _id: req.params.id }).select('-__v')
+        if (!student) throw Error('Sorry, could not fetch student data. Please try again');
+
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            data: student
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
 
 // CREATE NEW STUDENT
 exports.createStudent = async (req, res) => {
@@ -402,7 +424,25 @@ exports.createStudent = async (req, res) => {
 
 // UPDATE STUDENT PROFILE
 exports.updateStudentProfile = async (req, res) => {
+    try {
+        const student = await Student.findByIdAndUpdate({ _id: req.params.id }, req.body)
+        if (!student) throw Error('Sorry, student profile update failed. Please try again');
+        // send audit //
 
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200,
+            data: student
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
 }
 
 // UPDATE STUDENT PHOTO
@@ -436,6 +476,44 @@ exports.updateStudentDocuments = async (req, res) => {
 
 }
 
+// UPDATE STUDENT PASSWORD
+exports.updateStudentPassword = async (req, res) => {
+    try {
+        const {password} = req.body
+        const student = await Student.findOne({ _id: req.params.id })
+        if(!student) throw Error('Sorry, could not fetch student data')
+
+        // generate and hash new password //
+         const newPassword = await hashPassword(password);
+
+         // update and save user account
+         student.password = newPassword
+         await student.save()
+
+         console.log('Level 1')
+ 
+         //send email or sms
+        await sendSMS(
+            student.phone.mobile, 
+            `Hello ${student.surname}. Your new password - ${password}`
+        )
+
+        console.log('Level 2')
+
+        // send res to client
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200
+        })
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
 // FETCH ALL STAFF
 exports.getAllStaff = async (req, res) => {
     try {
@@ -463,7 +541,7 @@ exports.getAllStaff = async (req, res) => {
 // CREATE NEW STAFF
 exports.createStaff = async (req, res) => {
     try {
-        //chech if username and email has been taken
+        //check if username and email has been taken
         const userExist = await User.findOne({ email: req.body.email })
 
         if (userExist) {

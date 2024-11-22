@@ -90,7 +90,7 @@ const studentSchema = new mongoose.Schema({
     isFirstTime: { type: Boolean, default: true },
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpires: { type: Date, select: false },
-    // isLoginVerified: { type: Boolean, default: false },
+    isAccountDisabled: { type: Boolean, default: false },
     // isEmailVerified: { type: Boolean, default: false },
 }, {
     timestamps: true,
