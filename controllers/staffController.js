@@ -448,18 +448,19 @@ exports.updateStudentProfile = async (req, res) => {
 // UPDATE STUDENT PHOTO
 exports.updateStudentPhoto = async (req, res) => {
     try {
-        console.log('PHOTO ==> ', req.file)
+        // console.log('PHOTO ==> ', req.file)
         if (!req.file) {
             throw Error('Sorry, could not update profile picture')
         }
         //fetch user from database
-        const user = await Student.findOne({ index: req.params.id })
+        const user = await Student.findOne({ _id: req.params.id })
         user.photo = req.file.path;
         await user.save()
 
         // send res to client
         res.status(200).json({
             status: 'success',
+            responseCode: 200
         })
 
     } catch (error) {
@@ -649,7 +650,7 @@ exports.getAllDepartments = async (req, res) => {
 // CREATE DEPARTMENT //
 exports.createDepartment = async (req, res) => {
     try {
-        const dept = await Department.create({ name: req.body.name })
+        const dept = await Department.create({ name: req.body.name, head: req.body.head })
         if (!dept) throw Error('Sorry, department creation failed. Please try again');
 
         // send audit //
@@ -657,6 +658,7 @@ exports.createDepartment = async (req, res) => {
         // send response to client //
         res.status(200).json({
             status: 'success',
+            responseCode: 200
         })
 
     } catch (error) {
@@ -670,8 +672,8 @@ exports.createDepartment = async (req, res) => {
 // UPDATE DEPARTMENT //
 exports.updateDepartment = async (req, res) => {
     try {
-        const { name } = req.body
-        const dept = await Department.findByIdAndUpdate({ _id: req.params.id }, { name })
+        const { name, head } = req.body
+        const dept = await Department.findByIdAndUpdate({ _id: req.params.id }, { name, head })
         if (!dept) throw Error('Sorry, department update failed. Please try again');
 
         // send audit //
@@ -679,6 +681,7 @@ exports.updateDepartment = async (req, res) => {
         // send response to client //
         res.status(200).json({
             status: 'success',
+            responseCode: 200
         })
 
     } catch (error) {
