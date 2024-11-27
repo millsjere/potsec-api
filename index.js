@@ -12,7 +12,7 @@ const path = require('path')
 const studentRouter = require('./routers/studentRouter')//Routers
 const staffRouter = require('./routers/staffRouter')
 
-const whiteList = ["http://localhost:3000", "http://localhost:8080","http://localhost:8001"]
+const whiteList = ["http://localhost:3000", "http://localhost:8080","http://localhost:8001", "http://localhost:8002"]
 const corsOptions = {
   origin: (origin, cb) => {
     if (whiteList.indexOf(origin) !== -1) {

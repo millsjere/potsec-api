@@ -8,6 +8,7 @@ const sgMail = require('@sendgrid/mail')
 const { sendSMS } = require('../sms/ghsms');
 const Department = require('../models/departmentModel');
 const Programmes = require('../models/programmeModel');
+const FormPrice = require('../models/priceModel');
 
 
 const sampleData = {
@@ -53,6 +54,23 @@ const tokenMessage = (user, code) => {
     return msg
 }
 
+// GET FORM PRICE //
+exports.getFormPrice = async (req, res) => {
+    try {
+        const price = await FormPrice.find()
+        res.status(200).json({
+            status: "success",
+            responseCode: 200,
+            data: price[0]
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: "failed",
+            error: error,
+            message: error.message,
+        });
+    }
+}
 
 
 // USER SIGNUP
@@ -200,7 +218,7 @@ exports.resendEmailToken = async (req, res) => {
 // VERIFY LOGIN
 exports.verifyUserAccount = async (req, res) => {
     try {
-        const user = await User.findOne({ verificationCode: req.body.code }).select('+verificationCode +verificationCodeExpiry')
+        const user = await User.findOne({email: req.user.email, verificationCode: req.body.code }).select('+verificationCode +verificationCodeExpiry')
         if (!user) throw Error('Invalid authentication token')
         if (user.verificationCodeExpiry < new Date().getTime()) throw Error('Two-Factor token has expired. Please resend token')
 

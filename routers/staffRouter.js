@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword } = require('../controllers/staffController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice } = require('../controllers/staffController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
@@ -69,7 +69,7 @@ router.route('/api/staff/course/delete').patch(adminProtect, removeCourse)
 
 
 // Staff Routes //
-
+router.route('/api/admission/price').get(getFormPrice)
 
 
 module.exports = router

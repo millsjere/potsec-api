@@ -218,10 +218,10 @@ exports.verifyUserAccount = async (req, res) => {
 // LOGIN USER
 exports.login = async (req, res, next) => {
     try {
-        const { id, password } = req.body;
+        const { email, password } = req.body;
 
         // find user using email
-        const user = await User.findOne({ studentID: id }).select("+password +verificationCode +verificationCodeExpiry");
+        const user = await User.findOne({ email }).select("+password +verificationCode +verificationCodeExpiry");
         if (!user) {
             throw Error("Invalid user credentials");
         }
