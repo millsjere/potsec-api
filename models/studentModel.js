@@ -91,7 +91,11 @@ const studentSchema = new mongoose.Schema({
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpires: { type: Date, select: false },
     isAccountDisabled: { type: Boolean, default: false },
+    isLoginVerified: { type: Boolean, default: false },
     applicationStatus: { type: String, default: 'pending' },
+    applicationStage: { type: Number, default: 1 },
+    role: { type: String, default: 'applicant' },
+
 }, {
     timestamps: true,
     toJSON: { virtuals: true },
@@ -124,16 +128,16 @@ studentSchema.pre("save", function (next) {
     next();
 });
 
-studentSchema.pre('save', async(next) => {
-    const year = new Date().getFullYear().toString().slice(-2)
-    const month = new Date().getMonth();
-    const nextIndex = await Students.countDocuments() + 1;
-    const paddedIndex = nextIndex.toString().padStart(4, '0');
+// studentSchema.pre('save', async(next) => {
+//     const year = new Date().getFullYear().toString().slice(-2)
+//     const month = new Date().getMonth();
+//     const nextIndex = await Students.countDocuments() + 1;
+//     const paddedIndex = nextIndex.toString().padStart(4, '0');
 
-    this.enrollment.index = `PTC${year}${month}${paddedIndex}`;
-    
-    next()
-})
+//     this.enrollment.index = `PTC${year}${month}${paddedIndex}`;
+
+//     next()
+// })
 
 const Students = mongoose.model('Students', studentSchema)
 module.exports = Students

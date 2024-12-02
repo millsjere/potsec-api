@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice } = require('../controllers/staffController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone } = require('../controllers/staffController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
@@ -37,6 +37,10 @@ router.route('/api/staff/reset-password').post(staffProtect, resetStaffPassword)
 router.route('/api/staff/resend-email-token').get(staffProtect, resendEmailToken)
 router.route('/api/staff/verify-login').post(staffProtect, verifyUserAccount)
 
+// Applicants
+router.route('/api/applicant/check').post(checkEmailAndPhone)
+router.route('/api/applicant/new').post(createStudent)
+
 // Admin -> Student Routes //
 router.route('/api/all-students').get(adminProtect, getAllStudents)
 router.route('/api/student/:id').get(adminProtect, getOneStudent)
@@ -69,7 +73,7 @@ router.route('/api/staff/course/delete').patch(adminProtect, removeCourse)
 
 
 // Staff Routes //
-router.route('/api/admission/price').get(getFormPrice)
+router.route('/api/admission/form').get(getFormPrice)
 
 
 module.exports = router

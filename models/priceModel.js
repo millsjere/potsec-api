@@ -1,7 +1,10 @@
 const mongoose = require('mongoose')
 
-const priceSchema = new mongoose.Schema({
+const applicationFormSchema = new mongoose.Schema({
+  month: { type: String, default: 'January' },
+  year: { type: String, default: '2025' },
   amount: { type: Number, default: 120 },
+  type: { type: String, default: 'Local' },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -9,5 +12,5 @@ const priceSchema = new mongoose.Schema({
 })
 
 
-const FormPrice = mongoose.model('FormPrice', priceSchema)
+const FormPrice = mongoose.model('FormPrice', applicationFormSchema)
 module.exports = FormPrice

@@ -40,6 +40,14 @@ const generatePassword = () => {
     return `POTSEC${code}`
 }
 
+const generateIndex = async () => {
+    const year = new Date().getFullYear().toString().slice(-2)
+    const month = new Date().getMonth();
+    const nextIndex = await Student.countDocuments() + 1;
+    const paddedIndex = nextIndex.toString().padStart(4, '0');
+    return `PTC${year}${month}${paddedIndex}`;
+}
+
 const tokenMessage = (user, code) => {
     const msg = {
         to: `${user.email}`, // Change to your recipient
@@ -218,12 +226,13 @@ exports.resendEmailToken = async (req, res) => {
 // VERIFY LOGIN
 exports.verifyUserAccount = async (req, res) => {
     try {
-        const user = await User.findOne({email: req.user.email, verificationCode: req.body.code }).select('+verificationCode +verificationCodeExpiry')
+        const user = await User.findOne({ email: req.user.email, verificationCode: req.body.code }).select('+verificationCode +verificationCodeExpiry')
         if (!user) throw Error('Invalid authentication token')
         if (user.verificationCodeExpiry < new Date().getTime()) throw Error('Two-Factor token has expired. Please resend token')
 
         // update user and save
         user.verificationCode = undefined;
+        user.verificationCodeExpiry = undefined;
         user.isLoginVerified = true;
         await user.save()
 
@@ -382,54 +391,61 @@ exports.getOneStudent = async (req, res) => {
     }
 }
 
+exports.checkEmailAndPhone = async (req, res) => {
+    try {
+        console.log(req.body)
+        const userExist = await Student.findOne({ email: req.body.email })
+        if (userExist) throw Error("This applicant's email address already exist. Please check and try again")
+        //send res to client
+        res.status(200).json({
+            status: "success",
+            responseCode: 200
+        });
+    } catch (error) {
+        res.status(400).json({
+            status: "failed",
+            message: error.message
+        });
+    }
+}
+
 // CREATE NEW STUDENT
 exports.createStudent = async (req, res) => {
     try {
-        //chech if username and email has been taken
-        const userExist = await Student.findOne({ email: req.body.email })
-        if (userExist) {
-            //send res to client
-            res.status(400).json({
-                status: "failed",
-                responseCode: 400,
-                message: 'Student account already exist with this email'
-            });
-        } else {
-            const password = generatePassword()
-            const newPassword = await hashPassword(password);
-            const user = await Student.create({
-                ...req.body,
-                password: newPassword,
-            });
+        const password = generatePassword()
+        const newPassword = await hashPassword(password);
+        const user = await Student.create({
+            ...req.body,
+            phone: { mobile: req.body.phone },
+            password: newPassword,
+        });
 
-            if (!user) {
-                throw Error("Something went wrong. Please try again");
-            }
-            await user.save();
-
-            //send email to new register user
-            sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-            const msg = {
-                to: user.email,
-                from: "POTSEC <noreply@hiveafrika.com>",
-                subject: "Welcome to POTSEC",
-                html: registerMessage(
-                    `Dear ${user.surname}`,
-                    "Welcome to POTSEC. To gain access to your portal, use the password code below to activate your account. Please ignore this email if you did not register with POTSEC",
-                    password
-                ),
-            };
-            await sgMail.send(msg);
-
-            //send res to client
-            res.status(200).json({
-                status: "success",
-                responseCode: 200,
-                message: 'Student account created successfully',
-                data: user
-            });
-
+        if (!user) {
+            throw Error("Something went wrong. Please try again");
         }
+        await user.save();
+
+        //send email to new register user
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+        const msg = {
+            to: user.email,
+            from: "POTSEC <noreply@hiveafrika.com>",
+            subject: "Welcome to POTSEC",
+            html: registerMessage(
+                `Dear ${user.surname}`,
+                `Thank you for applying to POTSEC. To gain access to your portal, use the link and password code below to activate your account. Please ignore this email if you did not register with POTSEC`,
+                password
+            ),
+        };
+        await sgMail.send(msg);
+
+        //send res to client
+        res.status(200).json({
+            status: "success",
+            responseCode: 200,
+            message: 'Payment successful, please check your email for detail to complete your application',
+            data: user
+        });
 
     } catch (error) {
         res.status(500).json({
@@ -498,22 +514,22 @@ exports.updateStudentDocuments = async (req, res) => {
 // UPDATE STUDENT PASSWORD
 exports.updateStudentPassword = async (req, res) => {
     try {
-        const {password} = req.body
+        const { password } = req.body
         const student = await Student.findOne({ _id: req.params.id })
-        if(!student) throw Error('Sorry, could not fetch student data')
+        if (!student) throw Error('Sorry, could not fetch student data')
 
         // generate and hash new password //
-         const newPassword = await hashPassword(password);
+        const newPassword = await hashPassword(password);
 
-         // update and save user account
-         student.password = newPassword
-         await student.save()
+        // update and save user account
+        student.password = newPassword
+        await student.save()
 
-         console.log('Level 1')
- 
-         //send email or sms
+        console.log('Level 1')
+
+        //send email or sms
         await sendSMS(
-            student.phone.mobile, 
+            student.phone.mobile,
             `Hello ${student.surname}. Your new password - ${password}`
         )
 
@@ -842,13 +858,13 @@ exports.deleteProgramme = async (req, res) => {
             message: error.message
         })
     }
-} 
+}
 
 // ADD COURSE TO PROGRAMME //
 exports.addCourse = async (req, res) => {
     try {
         const { id, course } = req.body
-        const prog = await Programmes.findByIdAndUpdate(id, { $push: { courses: course }}, {new: true})
+        const prog = await Programmes.findByIdAndUpdate(id, { $push: { courses: course } }, { new: true })
         if (!prog) throw Error('Sorry, adding course failed. Please try again');
 
         // send response to client //
@@ -867,7 +883,7 @@ exports.addCourse = async (req, res) => {
 exports.removeCourse = async (req, res) => {
     try {
         const { id, course } = req.body
-        const prog = await Programmes.findByIdAndUpdate(id, { $pull: { courses: course }}, {new: true})
+        const prog = await Programmes.findByIdAndUpdate(id, { $pull: { courses: course } }, { new: true })
         if (!prog) throw Error('Sorry, deleting course failed. Please try again');
 
         // send response to client //

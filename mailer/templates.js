@@ -24,9 +24,14 @@ exports.registerMessage = (title, copy, code) => {
     \n <p style="font-size: 15px">${copy}</p>
     \n
     \n
-        <div style="padding: 10px 20px; text-align: center; background-color: #f7f7f7; border-radius: 8px">
+        <div style="margin: 10px 0 10px 0; padding: 10px 20px; text-align: center; background-color: #f7f7f7; border-radius: 8px">
             <p style="font-size: 36px; font-weight: 600; margin: 0">${code}</p>
         </div>
+    \n
+    \n
+        <a style="display: inline-block; cursor: pointer; border: none; border-radius: 5px padding: 10px 17px; text-decoration: none; background: orange; color: white;" 
+            href="https://apps.potsec.edu.gh", target="_blank">Login Here
+        </a>
     \n
     \n
     <p>That wasn't me! If the above sign-up attempt wasn't you, please ignore this email.</p>

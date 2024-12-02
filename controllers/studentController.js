@@ -1,9 +1,10 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt')
 const User = require('../models/studentModel')
-const { registerMessage, genericMessage } = require('../mailer/templates');
+const { registerMessage, genericMessage, codeMessage } = require('../mailer/templates');
 const sgMail = require('@sendgrid/mail')
-const { sendSMS } = require('../sms/ghsms')
+const { sendSMS } = require('../sms/ghsms');
+
 
 const hashPassword = async (password) => {
     const salt = await bcrypt.genSalt(10);
@@ -14,6 +15,20 @@ const hashPassword = async (password) => {
 const genDigits = () => {
     const code = Math.floor(100000 + Math.random() * 900000)
     return code
+}
+
+const tokenMessage = (user, code) => {
+    const msg = {
+        to: `${user.email}`, // Change to your recipient
+        from: "POTSEC <noreply@hiveafrika.com>", // Change to your verified sender
+        subject: "Verify Login",
+        html: codeMessage(
+            user.surname,
+            `Use this code to verify your login request. If you did not initiate this, contact support@apps.potsec.edu.gh`,
+            code
+        ),
+    };
+    return msg
 }
 
 
@@ -146,36 +161,24 @@ exports.resetUserPassword = async (req, res) => {
 // RESEND VERIFICATION EMAIL
 exports.resendEmailVerification = async (req, res) => {
     try {
-        const user = await User.findById({ _id: req.user.id }).select('+verificationCode');
-        if (!user) {
-            throw Error("User account not found");
-        }
+        const user = await User.findById(req.user.id).select('+verificationCode +verificationCodeExpiry')
+        if (!user) throw Error("User account not found");
 
         const activationToken = genDigits();
         user.verificationCode = activationToken
+        user.verificationCodeExpiry = new Date(Date.now() + 10 * 60 * 1000).getTime()
         await user.save()
 
-        // send email to user
+        // send email
+        const msg = tokenMessage(user, activationToken)
         sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-        const msg = {
-            to: `${user.email}`, // Change to your recipient
-            from: "POTSEC <noreply@hiveafrika.com>", // Change to your verified sender
-            subject: "Welcome to POTSEC",
-            html: registerMessage(
-                req,
-                "POTSEC",
-                user.firstname,
-                "To complete your registration process, use the code below to activate your account. Please ignore this email if you did not register with POTSEC",
-                activationToken
-            ),
-        };
-
         await sgMail.send(msg);
 
         // send res to client
         res.status(200).json({
             status: "success",
         });
+
     } catch (error) {
         res.status(401).json({
             status: "failed",
@@ -185,65 +188,48 @@ exports.resendEmailVerification = async (req, res) => {
     }
 };
 
-exports.verifyUserAccount = async (req, res) => {
-    try {
-        const { code } = req.body
-        const user = await User.findById({ _id: req.user.id }).select('+verificationCode');
-        if (!user) {
-            throw Error("User account not found");
-        }
-        if (user?.verificationCode !== code) throw Error('Wrong verification token')
-
-        // update user and save
-        user.verificationCode = undefined;
-        user.isEmailVerified = true;
-        user.isLoginVerified = true;
-        await user.save()
-
-        //send res to client
-        res.status(200).json({
-            status: "success",
-            data: { user }
-        });
-
-    } catch (error) {
-        res.status(401).json({
-            status: "failed",
-            error: error,
-            message: error.message,
-        });
-    }
-}
-
 // LOGIN USER
 exports.login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
-
         // find user using email
         const user = await User.findOne({ email }).select("+password +verificationCode +verificationCodeExpiry");
         if (!user) {
             throw Error("Invalid user credentials");
         }
-        if (!user.isEmailVerified) {
-            throw Error("Email is not verified. Please check your email");
-        }
+        // if (!user.isEmailVerified) {
+        //     throw Error("Email is not verified. Please check your email");
+        // }
 
         // verify password
-        const verified = await bcrypt.compare(password, user.password);
+        const verified = bcrypt.compare(password, user.password);
         if (verified) {
             // sign token
             let token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
                 expiresIn: "5h",
             });
 
-            //send SMS code
+            // generate code
             const smsCode = genDigits()
             user.verificationCode = smsCode
             user.verificationCodeExpiry = new Date(Date.now() + 10 * 60 * 1000).getTime()
             user.isLoginVerified = false
             await user.save()
-            await sendSMS(user.phone, `Verification Code - ${smsCode}`)
+
+            // send email
+            const msg = {
+                to: `${user.email}`, // Change to your recipient
+                from: "POTSEC <noreply@hiveafrika.com>", // Change to your verified sender
+                subject: "Verify Login",
+                html: codeMessage(
+                    user.surname,
+                    `Use this code to verify your login request. If you did not initiate this, contact support@apps.potsec.edu.gh`,
+                    smsCode
+                ),
+            };
+
+            sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+            await sgMail.send(msg);
 
             //send res to client
             res.status(200).json({
@@ -267,11 +253,11 @@ exports.login = async (req, res, next) => {
 };
 
 // SMS VERIFY //
-exports.verifySMS = async (req, res) => {
+exports.verifyUserAccount = async (req, res) => {
     try {
         const user = await User.findOne({ verificationCode: req.body.code }).select('+verificationCode +verificationCodeExpiry')
         if (!user) throw Error('Invalid authentication token')
-        if (user.verificationCodeExpiry < new Date().getTime()) throw Error('Two-Factor token has expired')
+        if (user.verificationCodeExpiry < new Date().getTime()) throw Error('Two-Factor token has expired. Please resend a new token')
 
         user.verificationCode = undefined;
         user.verificationCodeExpiry = undefined;
@@ -285,7 +271,40 @@ exports.verifySMS = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(400).json({
+        res.status(500).json({
+            status: "failed",
+            error: error,
+            message: error.message,
+        });
+    }
+}
+
+// Change user password //
+exports.changeUserPassword = async (req, res) => {
+    try {
+        // console.log(req.body)
+        const { password, oldPassword } = req.body
+        const user = await User.findOne({ email: req.user.email }).select('+password')
+        if (!user) throw Error('No user account found')
+
+        const verified = await bcrypt.compare(oldPassword, user.password);
+        // console.log('veerified ===>', verified)
+
+        if (!verified) throw Error('Current password is not correct. Please try again')
+        if (verified) {
+            const newPassword = await hashPassword(password);
+            // update and save user account
+            user.password = newPassword
+            await user.save()
+
+            //send res to client
+            res.status(200).json({
+                status: "success"
+            });
+        }
+
+    } catch (error) {
+        res.status(500).json({
             status: "failed",
             error: error,
             message: error.message,
