@@ -393,7 +393,7 @@ exports.getOneStudent = async (req, res) => {
 
 exports.checkEmailAndPhone = async (req, res) => {
     try {
-        console.log(req.body)
+        // console.log(req.body)
         const userExist = await Student.findOne({ email: req.body.email })
         if (userExist) throw Error("This applicant's email address already exist. Please check and try again")
         //send res to client
@@ -412,6 +412,8 @@ exports.checkEmailAndPhone = async (req, res) => {
 // CREATE NEW STUDENT
 exports.createStudent = async (req, res) => {
     try {
+        const userExist = await Student.findOne({ email: req.body.email })
+        if (userExist) throw Error("This applicant's email address already exist. Please check and try again")
         const password = generatePassword()
         const newPassword = await hashPassword(password);
         const user = await Student.create({
@@ -433,7 +435,8 @@ exports.createStudent = async (req, res) => {
             subject: "Welcome to POTSEC",
             html: registerMessage(
                 `Dear ${user.surname}`,
-                `Thank you for applying to POTSEC. To gain access to your portal, use the link and password code below to activate your account. Please ignore this email if you did not register with POTSEC`,
+                `Thank you for applying to POTSEC. To gain access to your portal, use the link and password code below to activate your account. 
+                    Please ignore this email if you did not register with POTSEC`,
                 password
             ),
         };
@@ -461,7 +464,10 @@ exports.updateStudentProfile = async (req, res) => {
     try {
         const student = await Student.findByIdAndUpdate({ _id: req.params.id }, req.body)
         if (!student) throw Error('Sorry, student profile update failed. Please try again');
-        // send audit //
+        
+        // update applicationStage //
+        student.applicationStage = 2;
+        student.save();
 
         // send response to client //
         res.status(200).json({

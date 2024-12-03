@@ -37,10 +37,6 @@ router.route('/api/staff/reset-password').post(staffProtect, resetStaffPassword)
 router.route('/api/staff/resend-email-token').get(staffProtect, resendEmailToken)
 router.route('/api/staff/verify-login').post(staffProtect, verifyUserAccount)
 
-// Applicants
-router.route('/api/applicant/check').post(checkEmailAndPhone)
-router.route('/api/applicant/new').post(createStudent)
-
 // Admin -> Student Routes //
 router.route('/api/all-students').get(adminProtect, getAllStudents)
 router.route('/api/student/:id').get(adminProtect, getOneStudent)

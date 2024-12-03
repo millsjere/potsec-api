@@ -14,7 +14,7 @@ exports.studentProtect = async (req, res, next) => {
             const user = await Students.findById({ _id: decoded.id }).select('-__v -createdAt');
 
             if (!user) {
-                throw Error('Student account does not exit. Please contact school Administrator')
+                throw Error('Applicant account does not exit. Please contact school Administrator')
             }
             // add user object to the req
             req.user = user;
