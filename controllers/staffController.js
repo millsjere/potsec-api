@@ -466,7 +466,7 @@ exports.updateStudentProfile = async (req, res) => {
         if (!student) throw Error('Sorry, student profile update failed. Please try again');
         
         // update applicationStage //
-        student.applicationStage = 2;
+        student.applicationStage = 3;
         student.save();
 
         // send response to client //
