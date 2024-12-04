@@ -4,6 +4,7 @@ const User = require('../models/studentModel')
 const { registerMessage, genericMessage, codeMessage } = require('../mailer/templates');
 const sgMail = require('@sendgrid/mail')
 const { sendSMS } = require('../sms/ghsms');
+const Notify = require('../models/notifyModel');
 
 
 const hashPassword = async (password) => {
@@ -49,17 +50,18 @@ exports.forgetUserPassword = async (req, res) => {
 
             // send email to user
             sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-            const msg = {
-                to: `${user.email}`, // Change to your recipient
-                from: "Hive Afrika <noreply@hiveafrika.com>", // Change to your verified sender
-                subject: "Hive Reset",
-                html: registerMessage(
-                    "POTSEC",
-                    user.firstname,
-                    "To reset your password, use the code below to as the reset token. Please ignore this email if you did not register with POTSEC",
-                    activationToken
-                ),
-            };
+            const msg = tokenMessage(user, activationToken)
+            // const msg = {
+            //     to: `${user.email}`, // Change to your recipient
+            //     from: "POTSEC <noreply@potsec.edu.gh>", // Change to your verified sender
+            //     subject: "Forgot Password Reset",
+            //     html: registerMessage(
+            //         "POTSEC",
+            //         user.firstname,
+            //         "To reset your password, use the code below to as the reset token. Please ignore this email if you did not register with POTSEC",
+            //         activationToken
+            //     ),
+            // };
 
             await sgMail.send(msg);
 
@@ -131,7 +133,7 @@ exports.resetUserPassword = async (req, res) => {
                 to: `${user.email}`, // Change to your recipient
                 from: "POTSEC <noreply@hiveafrika.com>", // Change to your verified sender
                 subject: "Password Reset Successful",
-                html: genericMessage(
+                html: registerMessage(
                     "POTSEC",
                     user.firstname,
                     "Your password reset was successful. If you did not initiate this, contact support@apps.potsec.edu.gh",
@@ -295,7 +297,14 @@ exports.changeUserPassword = async (req, res) => {
             const newPassword = await hashPassword(password);
             // update and save user account
             user.password = newPassword
-            await user.save()
+            await user.save();
+
+            //notification//
+            await Notify.create({
+                user: student.id,
+                title: 'Password Updated',
+                message: 'Your password has been updated successfully.'
+            });
 
             //send res to client
             res.status(200).json({
@@ -308,6 +317,26 @@ exports.changeUserPassword = async (req, res) => {
             status: "failed",
             error: error,
             message: error.message,
+        });
+    }
+}
+
+
+// NOTIFICATIONS //
+exports.getAllNotifications = async (req, res) => {
+    try{
+        const notify = await Notify.find({user: req.user.id});
+        
+        //send res to client
+            res.status(200).json({
+                status: "success",
+                data: notify
+            });
+    }catch(err){
+        res.status(500).json({
+            status: "failed",
+            error: err,
+            message: err.message,
         });
     }
 }
