@@ -324,15 +324,15 @@ exports.changeUserPassword = async (req, res) => {
 
 // NOTIFICATIONS //
 exports.getAllNotifications = async (req, res) => {
-    try{
-        const notify = await Notify.find({user: req.user.id});
-        
+    try {
+        const notify = await Notify.find({ user: req.user.id });
+
         //send res to client
-            res.status(200).json({
-                status: "success",
-                data: notify
-            });
-    }catch(err){
+        res.status(200).json({
+            status: "success",
+            data: notify
+        });
+    } catch (err) {
         res.status(500).json({
             status: "failed",
             error: err,

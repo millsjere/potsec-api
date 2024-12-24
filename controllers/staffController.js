@@ -1,9 +1,9 @@
-
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt')
 const User = require('../models/staffModel')
-const Student = require('../models/studentModel')
-const { registerMessage, genericMessage, codeMessage } = require('../mailer/templates');
+const Student = require('../models/studentModel');
+const Notify = require('../models/notifyModel');
+const { registerMessage, codeMessage, welcomeMessage } = require('../mailer/templates');
 const sgMail = require('@sendgrid/mail')
 const { sendSMS } = require('../sms/ghsms');
 const Department = require('../models/departmentModel');
@@ -43,7 +43,7 @@ const generatePassword = () => {
 const generateIndex = async () => {
     const year = new Date().getFullYear().toString().slice(-2)
     const month = new Date().getMonth();
-    const nextIndex = await Student.countDocuments() + 1;
+    const nextIndex = await Student.countDocuments({ role: 'student' }) + 1;
     const paddedIndex = nextIndex.toString().padStart(4, '0');
     return `PTC${year}${month}${paddedIndex}`;
 }
@@ -51,11 +51,11 @@ const generateIndex = async () => {
 const tokenMessage = (user, code) => {
     const msg = {
         to: `${user.email}`, // Change to your recipient
-        from: "POTSEC <noreply@hiveafrika.com>", // Change to your verified sender
+        from: "POTSEC <noreply@noreply@potsec.edu.gh>", // Change to your verified sender
         subject: "Verify Login",
         html: codeMessage(
             user.surname,
-            `Use this code to verify your login request. If you did not initiate this, contact support@apps.potsec.edu.gh`,
+            `Use this code to verify your login request. If you did not initiate this, contact support@potsec.edu.gh`,
             code
         ),
     };
@@ -66,6 +66,7 @@ const tokenMessage = (user, code) => {
 exports.getFormPrice = async (req, res) => {
     try {
         const price = await FormPrice.find()
+
         res.status(200).json({
             status: "success",
             responseCode: 200,
@@ -156,11 +157,11 @@ exports.staffLogin = async (req, res) => {
                 // send email
                 const msg = {
                     to: `${user.email}`, // Change to your recipient
-                    from: "POTSEC <noreply@hiveafrika.com>", // Change to your verified sender
+                    from: "POTSEC <noreply@potsec.edu.gh>", // Change to your verified sender
                     subject: "Verify Login",
                     html: codeMessage(
                         user.surname,
-                        `Use this code to verify your login request. If you did not initiate this, contact support@apps.potsec.edu.gh`,
+                        `Use this code to verify your login request. If you did not initiate this, contact support@potsec.edu.gh`,
                         smsCode
                     ),
                 };
@@ -317,17 +318,17 @@ exports.resetStaffPassword = async (req, res) => {
 
         //send email or sms
         if (type === 'sms') {
-            await sendSMS(user.phone, `Hello ${user.firstname}. Your password reset was successful. If you did not initiate this, contact support@hiveafrika.com`)
+            await sendSMS(user.phone, `Hello ${user.firstname}. Your password reset was successful. If you did not initiate this, contact support@potsec.edu.gh`)
         } else {
             sgMail.setApiKey(process.env.SENDGRID_API_KEY);
             const msg = {
                 to: `${user.email}`, // Change to your recipient
-                from: "POTSEC <noreply@hiveafrika.com>", // Change to your verified sender
+                from: "POTSEC <noreply@potsec.edu.gh>", // Change to your verified sender
                 subject: "Password Reset Successful",
-                html: genericMessage(
+                html: registerMessage(
                     "POTSEC",
                     user.firstname,
-                    "Your password reset was successful. If you did not initiate this, contact support@apps.potsec.edu.gh",
+                    "Your password reset was successful. If you did not initiate this, contact support@potsec.edu.gh",
                 ),
             };
             await sgMail.send(msg);
@@ -349,7 +350,7 @@ exports.resetStaffPassword = async (req, res) => {
 // FETCH ALL STUDENTS
 exports.getAllStudents = async (req, res) => {
     try {
-        const allStudents = await Student.find().sort('-createdAt')
+        const allStudents = await Student.find({ role: 'student' }).sort('-createdAt')
         if (!allStudents) {
             throw Error('Sorry, no student data found')
         }
@@ -368,6 +369,29 @@ exports.getAllStudents = async (req, res) => {
         })
     }
 }
+
+exports.getAllApplicants = async (req, res) => {
+    try {
+        const applicants = await Student.find({ role: 'applicant' }).sort('-createdAt')
+        if (!applicants) {
+            throw Error('Sorry, no student data found')
+        }
+
+        //send res to client
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200,
+            data: applicants
+        })
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
 exports.getOneStudent = async (req, res) => {
     try {
         // console.log('Fetching one student data')
@@ -393,7 +417,7 @@ exports.getOneStudent = async (req, res) => {
 
 exports.checkEmailAndPhone = async (req, res) => {
     try {
-        // console.log(req.body)
+        console.log(req.body)
         const userExist = await Student.findOne({ email: req.body.email })
         if (userExist) throw Error("This applicant's email address already exist. Please check and try again")
         //send res to client
@@ -431,12 +455,11 @@ exports.createStudent = async (req, res) => {
         sgMail.setApiKey(process.env.SENDGRID_API_KEY);
         const msg = {
             to: user.email,
-            from: "POTSEC <noreply@hiveafrika.com>",
+            from: "POTSEC <noreply@potsec.edu.gh>",
             subject: "Welcome to POTSEC",
             html: registerMessage(
                 `Dear ${user.surname}`,
-                `Thank you for applying to POTSEC. To gain access to your portal, use the link and password code below to activate your account. 
-                    Please ignore this email if you did not register with POTSEC`,
+                `Thank you for applying to POTSEC. To gain access to your portal, use the link and password code below to activate your account. Please ignore this email if you did not register with POTSEC`,
                 password
             ),
         };
@@ -464,10 +487,25 @@ exports.updateStudentProfile = async (req, res) => {
     try {
         const student = await Student.findByIdAndUpdate({ _id: req.params.id }, req.body)
         if (!student) throw Error('Sorry, student profile update failed. Please try again');
-        
+
         // update applicationStage //
         student.applicationStage = 3;
         student.save();
+
+        // send notification //
+        if (student.role === 'applicant') {
+            await Notify.create({
+                user: student.id,
+                title: 'Application Submitted',
+                message: 'Thank you. Your application has been submitted and received.'
+            });
+        } else {
+            await Notify.create({
+                user: student.id,
+                title: 'Profile Update',
+                message: 'Student details updated successfully'
+            });
+        }
 
         // send response to client //
         res.status(200).json({
@@ -531,15 +569,12 @@ exports.updateStudentPassword = async (req, res) => {
         student.password = newPassword
         await student.save()
 
-        console.log('Level 1')
 
         //send email or sms
         await sendSMS(
             student.phone.mobile,
             `Hello ${student.surname}. Your new password - ${password}`
         )
-
-        console.log('Level 2')
 
         // send res to client
         res.status(200).json({
@@ -886,6 +921,7 @@ exports.addCourse = async (req, res) => {
         })
     }
 }
+
 exports.removeCourse = async (req, res) => {
     try {
         const { id, course } = req.body
@@ -899,6 +935,76 @@ exports.removeCourse = async (req, res) => {
 
     } catch (error) {
         res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+exports.deleteStudent = async (req, res) => {
+    try {
+        await Student.findByIdAndDelete({ _id: req.params.id })
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+exports.admitStudent = async (req, res) => {
+    try {
+        const student = await Student.findById({ _id: req.params.id })
+        if (!student) throw Error('Applicant does not exist. Please try again')
+
+        // generate index no. and update role
+        const indexNo = await generateIndex();
+        student.role = 'student';
+        student.applicationStatus = 'admitted';
+        student.applicationStage = 4;
+        student.enrollment.index = indexNo;
+        student.admissionDate = new Date();
+
+        // send SMS to student no.
+        const message = `Congratulations, ${student.surname}! 🎉 You’ve been admitted to POTSEC. Welcome to the family! Check your email for details. Questions? Contact us at 0247142800`
+        await sendSMS(student.phone.mobile, message);
+
+        // send email
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+        const msg = {
+            to: student.email,
+            from: "POTSEC <noreply@potsec.edu.gh>",
+            subject: "Admission Confirmation - POTSEC",
+            html: welcomeMessage(student.surname, indexNo),
+        };
+        await sgMail.send(msg);
+
+        //notification//
+        await Notify.create({
+            user: student.id,
+            title: 'Student Admission',
+            message: 'A new student has been successfully admitted.'
+        });
+
+        await student.save();
+
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200
+        })
+    } catch (error) {
+        res.status(500).json({
             status: 'failed',
             error: error,
             message: error.message

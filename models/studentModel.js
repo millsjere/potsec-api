@@ -85,6 +85,7 @@ const studentSchema = new mongoose.Schema({
         phone: String,
     },
     campus: String,
+    admissionDate: { type: Date },
     verificationCode: { type: String, select: false },
     verificationCodeExpiry: { type: Date, select: false },
     isFirstTime: { type: Boolean, default: true },

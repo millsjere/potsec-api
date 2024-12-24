@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone } = require('../controllers/staffController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants } = require('../controllers/staffController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
@@ -36,6 +36,11 @@ router.route('/api/staff/forgot-password').post(staffProtect, staffForgetPasswor
 router.route('/api/staff/reset-password').post(staffProtect, resetStaffPassword)
 router.route('/api/staff/resend-email-token').get(staffProtect, resendEmailToken)
 router.route('/api/staff/verify-login').post(staffProtect, verifyUserAccount)
+
+router.route('/api/all-applicants').get(adminProtect, getAllApplicants)
+router.route('/api/applicant/admit/:id').post(adminProtect, admitStudent)
+router.route('/api/applicant/deny/:id').post(adminProtect, deleteStudent)
+router.route('/api/applicant/:id').delete(adminProtect, deleteStudent)
 
 // Admin -> Student Routes //
 router.route('/api/all-students').get(adminProtect, getAllStudents)
