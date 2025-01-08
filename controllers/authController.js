@@ -83,7 +83,6 @@ exports.adminProtect = async (req, res, next) => {
             }
             // add user object to the req
             req.user = user;
-            // console.log('INCOMING REQ ==> ', req)
 
             next();
 

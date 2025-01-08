@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants } = require('../controllers/staffController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter } = require('../controllers/staffController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
@@ -50,11 +50,14 @@ router.route('/api/student/profile/:id').patch(adminProtect, updateStudentProfil
 router.route('/api/student/reset-password/:id').patch(adminProtect, updateStudentPassword)
 router.route('/api/student/photo/:id').patch(adminProtect, uploadPhoto.single('photo'), updateStudentPhoto)
 router.route('/api/student/document/:id').patch(adminProtect, updateStudentDocuments)
+router.route('/api/student/send-admission-letter/:id').get(adminProtect, sendAdmissionLetter)
 
 // Admin -> Staff Routes //
 router.route('/api/staff/all').get(adminProtect, getAllStaff)
 router.route('/api/staff/create').post(adminProtect, createStaff)
+router.route('/api/staff/profile/:id').post(adminProtect, updateStaffProfile)
 router.route('/api/staff/photo/:id').patch(adminProtect, uploadStaffPhoto.single('photo'), updateStaffPhoto)
+router.route('/api/staff/remove/:id').delete(adminProtect, deleteStaff)
 
 // Admin --> Department Routes //
 router.route('/api/staff/department').get(adminProtect, getAllDepartments)

@@ -9,6 +9,8 @@ const { sendSMS } = require('../sms/ghsms');
 const Department = require('../models/departmentModel');
 const Programmes = require('../models/programmeModel');
 const FormPrice = require('../models/priceModel');
+const PDFDocument = require('pdfkit');
+const streamBuffers = require('stream-buffers');
 
 
 const sampleData = {
@@ -22,6 +24,17 @@ const sampleData = {
     department: 'College of Engineering',
     campus: 'Kumasi'
 }
+
+const encryptPassword = async (password) => {
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(password, salt);
+        console.log('Hashed password:', hash);
+    } catch (err) {
+        console.error('Error hashing password:', err);
+    }
+};
+
 
 const hashPassword = async (password) => {
     const salt = await bcrypt.genSalt(10);
@@ -184,7 +197,7 @@ exports.staffLogin = async (req, res) => {
         }
 
     } catch (error) {
-        res.status(401).json({
+        res.status(500).json({
             status: "failed",
             responseCode: 401,
             error: error,
@@ -515,7 +528,7 @@ exports.updateStudentProfile = async (req, res) => {
         })
 
     } catch (error) {
-        res.status(404).json({
+        res.status(500).json({
             status: 'failed',
             error: error,
             message: error.message
@@ -587,6 +600,82 @@ exports.updateStudentPassword = async (req, res) => {
             error: error,
             message: error.message
         })
+    }
+}
+
+// RESEND STUDENT ADMISSION LETTER
+exports.sendAdmissionLetter = async (req, res) => {
+    try {
+        const student = await Student.findOne({ _id: req.params.id })
+
+        // Step 1: Create PDF document
+        const doc = new PDFDocument();
+        const bufferStream = new streamBuffers.WritableStreamBuffer();
+
+        doc.pipe(bufferStream);
+
+        // Dynamic Content for the PDF
+        doc.fontSize(20).text('Prince Osei-Tutu Skills and Entrepreneurial College (POTSEC)', { align: 'center' });
+        doc.fontSize(14).text('Accra Campus', { align: 'center' });
+        doc.moveDown(2);
+
+        doc.text(`${student.surname} ${student.othernames}`, { align: 'left' });
+        doc.text(`${student.address.residence}, ${student.address.town}, ${student.address.district}`);
+        doc.text(student.phone.mobile);
+        doc.moveDown(1);
+
+        doc.fontSize(16).text('ADMISSION TO POTSEC – 2025 ACADEMIC YEAR (1ST TRIMESTER)', { align: 'left' });
+        doc.moveDown(1);
+
+        doc.fontSize(12).text(`We are pleased to inform you that the admission board for Prince Osei-Tutu Skills and Entrepreneurial College, Accra Campus has offered you admission to pursue a Three (3) year Diploma in COSMETOLOGY (Hair and Beauty) Programme on a regular option starting from 6th January, 2025.`);
+        doc.text('...');
+        doc.moveDown(2);
+
+        doc.text('Yours Sincerely,');
+        doc.text('Mr. Samuel Darko');
+        doc.text('College Principal');
+        doc.end();
+
+        // Step 2: Convert to Base64
+        bufferStream.on('finish', async () => {
+            const pdfBuffer = bufferStream.getContents();
+            const base64PDF = pdfBuffer.toString('base64');
+
+            // Step 3: Send Email with PDF Attachment
+            sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+            const msg = {
+                to: 'jeremiahmills93@gmail.com', // Replace with the recipient's email
+                from: 'POTSEC <noreply@potsec.edu.gh>', // Replace with your verified sender email
+                subject: 'Admission Letter - POTSEC',
+                text: 'Please find your admission letter attached.',
+                attachments: [
+                    {
+                        content: base64PDF,
+                        filename: 'Admission_Letter.pdf',
+                        type: 'application/pdf',
+                        disposition: 'attachment',
+                    },
+                ],
+            };
+            try {
+                await sgMail.send(msg);
+                res.status(200).json({
+                    status: 'success',
+                    responseCode: 200,
+                    message: 'Admission letter sent successfully!'
+                });
+            } catch (error) {
+                console.error('Error sending email:', error.response ? error.response.body : error.message);
+                res.status(500).send('Failed to send the email.');
+            }
+        })
+
+    } catch (error) {
+        console.error('Error creating PDF:', error.message);
+        res.status(500).json({
+            status: 'failed',
+            message: 'Failed to create and send the PDF.'
+        });
     }
 }
 
@@ -692,6 +781,53 @@ exports.updateStaffPhoto = async (req, res) => {
 
     } catch (error) {
         res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+exports.updateStaffProfile = async (req, res) => {
+    try {
+        const staff = await User.findByIdAndUpdate({ _id: req.params.id }, req.body)
+        if (!staff) throw Error('Sorry, staff profile update failed. Please try again');
+
+        // send notification //
+        await Notify.create({
+            user: staff.id,
+            title: 'Profile Update',
+            message: 'Staff details updated successfully'
+        });
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200
+        })
+
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+exports.deleteStaff = async (req, res) => {
+    try {
+        await User.findByIdAndDelete({ _id: req.params.id })
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200
+        })
+
+    } catch (error) {
+        res.status(500).json({
             status: 'failed',
             error: error,
             message: error.message
