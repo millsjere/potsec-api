@@ -11,6 +11,7 @@ const Programmes = require('../models/programmeModel');
 const FormPrice = require('../models/priceModel');
 const PDFDocument = require('pdfkit');
 const streamBuffers = require('stream-buffers');
+const Course = require('../models/CourseModel');
 
 
 const sampleData = {
@@ -503,6 +504,7 @@ exports.updateStudentProfile = async (req, res) => {
 
         // update applicationStage //
         student.applicationStage = 3;
+        student.applicationStatus = 'submitted';
         student.save();
 
         // send notification //
@@ -951,7 +953,10 @@ exports.getAllProgrammes = async (req, res) => {
 exports.getOneProgramme = async (req, res) => {
     try {
         // console.log('Fetching one programme')
-        const prog = await Programmes.findById({ _id: req.params.id }).populate('department').select('-__v -_id')
+        const prog = await Programmes.findById({ _id: req.params.id })
+        .populate('department')
+        .populate({ path: 'courses', select: 'name code trimester year credit'})
+        .select('-__v -_id')
         if (!prog) throw Error('Sorry, could not fetch programmes. Please try again');
 
         // send audit //
@@ -1041,7 +1046,11 @@ exports.deleteProgramme = async (req, res) => {
 exports.addCourse = async (req, res) => {
     try {
         const { id, course } = req.body
-        const prog = await Programmes.findByIdAndUpdate(id, { $push: { courses: course } }, { new: true })
+        const { name, code, trimester, credit, year } = course
+        // create a new course
+        const newCourse = await Course.create({name, code, trimester, year, credit, program: id})
+        // find the program by id and add course id
+        const prog = await Programmes.findByIdAndUpdate(id, { $push: { courses: newCourse.id } }, { new: true })
         if (!prog) throw Error('Sorry, adding course failed. Please try again');
 
         // send response to client //
