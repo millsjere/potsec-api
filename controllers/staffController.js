@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt')
-const User = require('../models/staffModel')
+const Staff = require('../models/staffModel')
 const Student = require('../models/studentModel');
 const Notify = require('../models/notifyModel');
 const { registerMessage, codeMessage, welcomeMessage } = require('../mailer/templates');
@@ -62,6 +62,13 @@ const generateIndex = async () => {
     return `PTC${year}${month}${paddedIndex}`;
 }
 
+const generateStaffID = async () => {
+    const year = new Date().getFullYear().toString().slice(-2)
+    const nextIndex = await Staff.countDocuments({ role: 'staff' }) + 1;
+    const paddedIndex = nextIndex.toString().padStart(4, '0');
+    return `PTC-STF${year}/${paddedIndex}`;
+}
+
 const tokenMessage = (user, code) => {
     const msg = {
         to: `${user.email}`, // Change to your recipient
@@ -101,7 +108,7 @@ exports.createAccount = async (req, res) => {
     try {
         //chech if username and email has been taken
         const { othernames, surname, email, phone, gender, programme, password, department, campus } = sampleData;
-        const userExist = await User.findOne({ email })
+        const userExist = await Staff.findOne({ email })
         if (userExist) {
             //send res to client
             res.status(400).json({
@@ -111,7 +118,7 @@ exports.createAccount = async (req, res) => {
             });
         } else {
             const newPassword = await hashPassword(password);
-            const user = await User.create({
+            const user = await Staff.create({
                 othernames, surname, email, phone, gender, programme, department, campus,
                 password: newPassword,
             });
@@ -144,7 +151,7 @@ exports.createAccount = async (req, res) => {
 exports.staffLogin = async (req, res) => {
     try {
         const { email, password } = req.body
-        const user = await User.findOne({ email }).select('+password +verificationCode +verificationCodeExpiry')
+        const user = await Staff.findOne({ email }).select('+password +verificationCode +verificationCodeExpiry')
         if (!user) {
             //send res to client
             res.status(401).json({
@@ -211,7 +218,7 @@ exports.staffLogin = async (req, res) => {
 // RESEND SMS TOKEN
 exports.resendEmailToken = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('+verificationCode +verificationCodeExpiry')
+        const user = await Staff.findById(req.user.id).select('+verificationCode +verificationCodeExpiry')
 
         //send SMS code
         const smsCode = genDigits()
@@ -241,7 +248,7 @@ exports.resendEmailToken = async (req, res) => {
 // VERIFY LOGIN
 exports.verifyUserAccount = async (req, res) => {
     try {
-        const user = await User.findOne({ email: req.user.email, verificationCode: req.body.code }).select('+verificationCode +verificationCodeExpiry')
+        const user = await Staff.findOne({ email: req.user.email, verificationCode: req.body.code }).select('+verificationCode +verificationCodeExpiry')
         if (!user) throw Error('Invalid authentication token')
         if (user.verificationCodeExpiry < new Date().getTime()) throw Error('Two-Factor token has expired. Please resend token')
 
@@ -270,7 +277,7 @@ exports.verifyUserAccount = async (req, res) => {
 exports.staffForgetPassword = async (req, res) => {
     try {
         // find user using email
-        const user = await User.findOne({ email: req.body.email }).select('+resetPasswordToken +resetPasswordExpires')
+        const user = await Staff.findOne({ email: req.body.email }).select('+resetPasswordToken +resetPasswordExpires')
         if (!user) throw Error('User account does not exist')
 
         //generate token to email
@@ -313,8 +320,8 @@ exports.resetStaffPassword = async (req, res) => {
     try {
         const { token, password, type, value } = req.body
         const user = type === 'email' ?
-            await User.findOne({ email: value }).select('+password +resetPasswordToken +resetPasswordExpires')
-            : await User.findOne({ phone: value }).select('+password +resetPasswordToken +resetPasswordExpires')
+            await Staff.findOne({ email: value }).select('+password +resetPasswordToken +resetPasswordExpires')
+            : await Staff.findOne({ phone: value }).select('+password +resetPasswordToken +resetPasswordExpires')
 
         if (!user) throw Error('No user account found')
         if (user.resetPasswordToken !== token) throw Error('Wrong reset token')
@@ -684,7 +691,7 @@ exports.sendAdmissionLetter = async (req, res) => {
 // FETCH ALL STAFF
 exports.getAllStaff = async (req, res) => {
     try {
-        const allStaff = await User.find().sort('-createdAt')
+        const allStaff = await Staff.find().sort('-createdAt')
         if (!allStaff) {
             throw Error('Sorry, no staff data found')
         }
@@ -709,7 +716,7 @@ exports.getAllStaff = async (req, res) => {
 exports.createStaff = async (req, res) => {
     try {
         //check if username and email has been taken
-        const userExist = await User.findOne({ email: req.body.email })
+        const userExist = await Staff.findOne({ email: req.body.email })
 
         if (userExist) {
             //send res to client
@@ -720,9 +727,14 @@ exports.createStaff = async (req, res) => {
             });
         } else {
             const password = generatePassword()
+            const staff_id = generateStaffID()
             const newPassword = await hashPassword(password);
-            const user = await User.create({
+            const user = await Staff.create({
                 ...req.body,
+                academics: {
+                    ...req.body.academics,
+                    staffID: staff_id
+                },
                 password: newPassword,
             });
 
@@ -772,7 +784,7 @@ exports.updateStaffPhoto = async (req, res) => {
             throw Error('Sorry, could not update profile picture')
         }
         //fetch user from database
-        const user = await User.findOne({ index: req.params.id })
+        const user = await Staff.findOne({ index: req.params.id })
         user.photo = req.file.path;
         await user.save()
 
@@ -792,7 +804,7 @@ exports.updateStaffPhoto = async (req, res) => {
 
 exports.updateStaffProfile = async (req, res) => {
     try {
-        const staff = await User.findByIdAndUpdate({ _id: req.params.id }, req.body)
+        const staff = await Staff.findByIdAndUpdate({ _id: req.params.id }, req.body)
         if (!staff) throw Error('Sorry, staff profile update failed. Please try again');
 
         // send notification //
@@ -819,7 +831,7 @@ exports.updateStaffProfile = async (req, res) => {
 
 exports.deleteStaff = async (req, res) => {
     try {
-        await User.findByIdAndDelete({ _id: req.params.id })
+        await Staff.findByIdAndDelete({ _id: req.params.id })
         // send audit //
 
         // send response to client //
@@ -938,6 +950,7 @@ exports.getAllProgrammes = async (req, res) => {
         // send response to client //
         res.status(200).json({
             status: 'success',
+            responseCode: 200,
             data: prog
         })
 
@@ -1066,6 +1079,60 @@ exports.addCourse = async (req, res) => {
         })
     }
 }
+
+exports.bulkAddCourses = async (req, res) => {
+    try {
+        const { id, courses } = req.body; // `courses` should be an array of course objects
+        if (!Array.isArray(courses) || courses.length === 0) {
+            throw new Error("No courses provided for bulk upload.");
+        }
+
+        // Map through the courses array and create each course
+        const newCourses = await Promise.all(
+            courses.map(async (course) => {
+                const { name, code, trimester, credit, year } = course;
+
+                // Create a new course and associate it with the program
+                const newCourse = await Course.create({
+                    name,
+                    code,
+                    trimester,
+                    year,
+                    credit,
+                    program: id,
+                });
+
+                return newCourse._id; // Return the ID of the newly created course
+            })
+        );
+
+        // Update the program by adding all course IDs in one go
+        const updatedProgram = await Programmes.findByIdAndUpdate(
+            id,
+            { $push: { courses: { $each: newCourses } } },
+            { new: true }
+        );
+
+        if (!updatedProgram) {
+            throw new Error("Sorry, adding courses failed. Please try again.");
+        }
+
+        // Send response to client
+        res.status(200).json({
+            status: "success",
+            responseCode: 200,
+            message: `${newCourses.length} courses added successfully.`,
+            updatedProgram,
+        });
+    } catch (error) {
+        res.status(400).json({
+            status: "failed",
+            error: error,
+            message: error.message,
+        });
+    }
+};
+
 
 exports.removeCourse = async (req, res) => {
     try {

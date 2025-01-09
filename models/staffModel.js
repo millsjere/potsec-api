@@ -20,29 +20,25 @@ const staffSchema = new mongoose.Schema({
         type: String,
         select: false
     },
-    phone: {
-        mobile: { type: String },
-        whatsapp: { type: String }
-    },
+    phone: { type: String },
     photo: { type: String },
     gender: { type: String },
-    address: {
-        residence: { type: String },
-        region: { type: String }
-    },
+    address: { type: String },
     nationalID: {
         type: { type: String },
         number: { type: String }
     },
-    language: {
-        spoken: String,
-        written: String
-    },
     academics: {
-        department: { type: String },
+        department: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Department', // Reference to the Department model
+        },
         staffID: { type: String },
         staffEmail: { type: String },
-        programme: { type: String },
+        programme: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Programmes', // Reference to the Programmes model
+        },
         campus: { type: String }
     },
     role: { type: String, default: 'staff' },

@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter } = require('../controllers/staffController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter, bulkAddCourses } = require('../controllers/staffController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
@@ -73,6 +73,7 @@ router.route('/api/staff/programmes/:id').get(adminProtect, getOneProgramme)
 router.route('/api/staff/programmes/:id').patch(adminProtect, updateProgramme)
 router.route('/api/staff/programmes/:id').delete(adminProtect, deleteProgramme)
 router.route('/api/staff/course/add').patch(adminProtect, addCourse)
+router.route('/api/staff/course/bulk-upload').post(adminProtect, bulkAddCourses)
 router.route('/api/staff/course/delete').patch(adminProtect, removeCourse)
 
 
