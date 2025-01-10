@@ -1,7 +1,7 @@
 const express = require('express');
 const { login, forgetUserPassword, resetUserPassword, verifyUserAccount, resendEmailVerification, changeUserPassword } = require('../controllers/studentController');
 const { studentProtect } = require('../controllers/authController');
-const { checkEmailAndPhone, createStudent, updateStudentProfile, updateStudentPhoto } = require('../controllers/staffController');
+const { checkEmailAndPhone, createStudent, updateStudentProfile, updateStudentPhoto } = require('../controllers/adminController');
 const { studentPhotoStorage } = require('../cloudinary');
 const multer = require('multer');
 const router = express.Router();

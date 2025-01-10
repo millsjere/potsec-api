@@ -10,9 +10,9 @@ const path = require('path')
 
 //Routers
 const studentRouter = require('./routers/studentRouter')//Routers
-const staffRouter = require('./routers/staffRouter')
+const adminRouter = require('./routers/adminRouter')
 
-const whiteList = ["https://admissions.potsec.edu.gh", "https://students.potsec.edu.gh","http://localhost:8001", "http://localhost:8002"]
+const whiteList = ["https://admissions.potsec.edu.gh", "https://students.potsec.edu.gh", "http://localhost:8001", "http://localhost:5000", "http://localhost:8002"]
 const corsOptions = {
   origin: (origin, cb) => {
     if (whiteList.indexOf(origin) !== -1) {
@@ -38,7 +38,7 @@ app.use(cookieParser());
 
 // All Routes default //
 app.use(studentRouter)
-app.use(staffRouter)
+app.use(adminRouter)
 
 // Static Files //
 //app.use(express.static(path.join(__dirname, '/client/build')))

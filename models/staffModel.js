@@ -35,10 +35,6 @@ const staffSchema = new mongoose.Schema({
         },
         staffID: { type: String },
         staffEmail: { type: String },
-        programme: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Programmes', // Reference to the Programmes model
-        },
         campus: { type: String }
     },
     role: { type: String, default: 'staff' },

@@ -14,17 +14,6 @@ const streamBuffers = require('stream-buffers');
 const Course = require('../models/CourseModel');
 
 
-const sampleData = {
-    surname: 'Mills',
-    othernames: 'Jeremiah',
-    email: 'jmills@potsec.edu.gh',
-    password: 'test12345',
-    phone: '0557228597',
-    gender: 'Male',
-    programme: 'Computer Science',
-    department: 'College of Engineering',
-    campus: 'Kumasi'
-}
 
 const encryptPassword = async (password) => {
     try {
@@ -66,7 +55,7 @@ const generateStaffID = async () => {
     const year = new Date().getFullYear().toString().slice(-2)
     const nextIndex = await Staff.countDocuments({ role: 'staff' }) + 1;
     const paddedIndex = nextIndex.toString().padStart(4, '0');
-    return `PTC-STF${year}/${paddedIndex}`;
+    return `PTC-STF${year}-${paddedIndex}`;
 }
 
 const tokenMessage = (user, code) => {
@@ -691,7 +680,7 @@ exports.sendAdmissionLetter = async (req, res) => {
 // FETCH ALL STAFF
 exports.getAllStaff = async (req, res) => {
     try {
-        const allStaff = await Staff.find().sort('-createdAt')
+        const allStaff = await Staff.find().populate({ path: 'academics.department', select: 'name' }).sort('-createdAt')
         if (!allStaff) {
             throw Error('Sorry, no staff data found')
         }
@@ -727,7 +716,7 @@ exports.createStaff = async (req, res) => {
             });
         } else {
             const password = generatePassword()
-            const staff_id = generateStaffID()
+            const staff_id = await generateStaffID()
             const newPassword = await hashPassword(password);
             const user = await Staff.create({
                 ...req.body,
@@ -801,6 +790,67 @@ exports.updateStaffPhoto = async (req, res) => {
         })
     }
 }
+
+exports.bulkAddStaff = async (req, res) => {
+    try {
+        const { staff } = req.body; // `staff` should be an array of staff objects
+        if (!Array.isArray(staff) || staff.length === 0) {
+            throw new Error("No staff provided for bulk upload.");
+        }
+
+        // Map through the staff array and create each staff member
+        const newStaff = await Promise.all(
+            staff.map(async (member) => {
+                const { surname, email, academics } = member;
+
+                // Generate password, staff ID, and hash password
+                const password = generatePassword();
+                const staffID = await generateStaffID();
+                const hashedPassword = await hashPassword(password);
+
+                // Create a new staff record
+                const newStaffMember = await Staff.create({
+                    ...member,
+                    password: hashedPassword,
+                    academics: {
+                        ...academics,
+                        staffID,
+                    },
+                });
+
+                // Send email notification
+                sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+                const msg = {
+                    to: email,
+                    from: "POTSEC <noreply@hiveafrika.com>",
+                    subject: "Staff Registration",
+                    html: registerMessage(
+                        `Dear ${surname}`,
+                        "Welcome to POTSEC. To gain access to your portal, use the password code below to activate your account.",
+                        password
+                    ),
+                };
+                await sgMail.send(msg);
+
+                return newStaffMember._id; // Return the ID of the newly created staff
+            })
+        );
+
+        // Send response to client
+        res.status(200).json({
+            status: "success",
+            responseCode: 200,
+            message: `${newStaff.length} staff members added successfully.`,
+        });
+    } catch (error) {
+        res.status(400).json({
+            status: "failed",
+            error: error,
+            message: error.message,
+        });
+    }
+};
+
 
 exports.updateStaffProfile = async (req, res) => {
     try {
@@ -894,6 +944,109 @@ exports.createDepartment = async (req, res) => {
         })
     }
 }
+
+//  BULK DEPARTMENT UPLOAD
+// exports.bulkCreateDepartments = async (req, res) => {
+//     try {
+//         const departments = req.body.departments; // Expecting an array of departments
+
+//         if (!Array.isArray(departments) || departments.length === 0) {
+//             return res.status(400).json({
+//                 status: 'failed',
+//                 message: 'Invalid or empty department data',
+//             });
+//         }
+
+//         const createdDepartments = [];
+//         const errors = [];
+
+//         for (const department of departments) {
+//             try {
+//                 const { name, head } = department;
+
+//                 // Validate required fields
+//                 if (!name || !head) {
+//                     throw new Error('Missing required fields: name or head');
+//                 }
+
+//                 // Check for duplicate department name
+//                 const existingDepartment = await Department.findOne({ name });
+//                 if (existingDepartment) {
+//                     errors.push({
+//                         name,
+//                         message: 'Department already exists',
+//                     });
+//                     continue;
+//                 }
+
+//                 // Create new department
+//                 const dept = await Department.create({ name, head });
+//                 createdDepartments.push(dept);
+//             } catch (err) {
+//                 console.error('Error creating department:', err.message);
+//                 errors.push({
+//                     department: department.name,
+//                     message: err.message,
+//                 });
+//             }
+//         }
+
+//         // Send response
+//         res.status(200).json({
+//             status: 'success',
+//             message: 'Bulk department upload completed',
+//             created: createdDepartments.length,
+//             failed: errors.length,
+//             errors,
+//         });
+//     } catch (err) {
+//         console.error('Error in bulk department upload:', err.message);
+//         res.status(500).json({
+//             status: 'failed',
+//             message: 'An error occurred during bulk department upload',
+//             error: err.message,
+//         });
+//     }
+// };
+
+exports.bulkCreateDepartments = async (req, res) => {
+    try {
+        const { departments } = req.body; // `departments` should be an array of department objects
+        if (!Array.isArray(departments) || departments.length === 0) {
+            throw new Error("No departments provided for bulk upload.");
+        }
+
+        // Map through the departments array and create each department
+        const newDepartments = await Promise.all(
+            departments.map(async (department) => {
+                const { name, head } = department;
+
+                // Create a new department
+                const newDepartment = await Department.create({
+                    name,
+                    head,
+                });
+
+                return newDepartment._id; // Return the ID of the newly created department
+            })
+        );
+
+        // Send response to client
+        res.status(200).json({
+            status: "success",
+            responseCode: 200,
+            message: `${newDepartments.length} departments added successfully.`,
+        });
+    } catch (error) {
+        res.status(400).json({
+            status: "failed",
+            error: error,
+            message: error.message,
+        });
+    }
+};
+
+
 // UPDATE DEPARTMENT //
 exports.updateDepartment = async (req, res) => {
     try {
@@ -967,9 +1120,9 @@ exports.getOneProgramme = async (req, res) => {
     try {
         // console.log('Fetching one programme')
         const prog = await Programmes.findById({ _id: req.params.id })
-        .populate('department')
-        .populate({ path: 'courses', select: 'name code trimester year credit'})
-        .select('-__v -_id')
+            .populate('department')
+            .populate({ path: 'courses', select: 'name code trimester year credit' })
+            .select('-__v -_id')
         if (!prog) throw Error('Sorry, could not fetch programmes. Please try again');
 
         // send audit //
@@ -1011,6 +1164,110 @@ exports.createProgramme = async (req, res) => {
         })
     }
 }
+
+// BULK PROGRAMMES UPLOAD
+// exports.bulkCreateProgrammes = async (req, res) => {
+//     try {
+//         const programmes = req.body.programmes; // Expecting an array of programmes
+
+//         if (!Array.isArray(programmes) || programmes.length === 0) {
+//             return res.status(400).json({
+//                 status: 'failed',
+//                 message: 'Invalid or empty programme data',
+//             });
+//         }
+
+//         const createdProgrammes = [];
+//         const errors = [];
+
+//         for (const programme of programmes) {
+//             try {
+//                 const { name, department, duration } = programme;
+
+//                 // Validate required fields
+//                 if (!name || !department || !duration) {
+//                     throw new Error('Missing required fields: name, department, or duration');
+//                 }
+
+//                 // Check for duplicate programme name in the same department
+//                 const existingProgramme = await Programmes.findOne({ name, department });
+//                 if (existingProgramme) {
+//                     errors.push({
+//                         name,
+//                         message: 'Programme already exists in this department',
+//                     });
+//                     continue;
+//                 }
+
+//                 // Create new programme
+//                 const prog = await Programmes.create({ name, department, duration });
+//                 createdProgrammes.push(prog);
+//             } catch (err) {
+//                 console.error('Error creating programme:', err.message);
+//                 errors.push({
+//                     programme: programme.name,
+//                     message: err.message,
+//                 });
+//             }
+//         }
+
+//         // Send response
+//         res.status(200).json({
+//             status: 'success',
+//             message: 'Bulk programme upload completed',
+//             created: createdProgrammes.length,
+//             failed: errors.length,
+//             errors,
+//         });
+//     } catch (err) {
+//         console.error('Error in bulk programme upload:', err.message);
+//         res.status(500).json({
+//             status: 'failed',
+//             message: 'An error occurred during bulk programme upload',
+//             error: err.message,
+//         });
+//     }
+// };
+
+exports.bulkCreateProgrammes = async (req, res) => {
+    try {
+        const { programmes } = req.body; // `programmes` should be an array of programme objects
+        if (!Array.isArray(programmes) || programmes.length === 0) {
+            throw new Error("No programmes provided for bulk upload.");
+        }
+
+        // Map through the programmes array and create each programme
+        const newProgrammes = await Promise.all(
+            programmes.map(async (programme) => {
+                const { name, department, duration } = programme;
+
+                // Create a new programme
+                const newProgramme = await Programmes.create({
+                    name,
+                    department,
+                    duration,
+                });
+
+                return newProgramme._id; // Return the ID of the newly created programme
+            })
+        );
+
+        // Send response to client
+        res.status(200).json({
+            status: "success",
+            responseCode: 200,
+            message: `${newProgrammes.length} programmes added successfully.`,
+        });
+    } catch (error) {
+        res.status(400).json({
+            status: "failed",
+            error: error,
+            message: error.message,
+        });
+    }
+};
+
+
 
 // CREATE PRROGRAMME //
 exports.updateProgramme = async (req, res) => {
@@ -1061,7 +1318,7 @@ exports.addCourse = async (req, res) => {
         const { id, course } = req.body
         const { name, code, trimester, credit, year } = course
         // create a new course
-        const newCourse = await Course.create({name, code, trimester, year, credit, program: id})
+        const newCourse = await Course.create({ name, code, trimester, year, credit, program: id })
         // find the program by id and add course id
         const prog = await Programmes.findByIdAndUpdate(id, { $push: { courses: newCourse.id } }, { new: true })
         if (!prog) throw Error('Sorry, adding course failed. Please try again');
@@ -1137,7 +1394,7 @@ exports.bulkAddCourses = async (req, res) => {
 exports.removeCourse = async (req, res) => {
     try {
         const { id, course } = req.body
-        const prog = await Programmes.findByIdAndUpdate(id, { $pull: { courses: course } }, { new: true })
+        const prog = await Programmes.findByIdAndUpdate(id, { $pull: { courses: course.id } }, { new: true })
         if (!prog) throw Error('Sorry, deleting course failed. Please try again');
 
         // send response to client //
@@ -1223,3 +1480,102 @@ exports.admitStudent = async (req, res) => {
         })
     }
 }
+
+
+// SEARCH CONTROLLERS //
+exports.searchStaff = async (req, res) => {
+    try {
+        const { name, email } = req.query;
+        let staffID = req.query.staffid
+
+        // Build dynamic filter
+        const filter = {};
+
+        // Search by name (surname or othernames) - partial and case-insensitive
+        if (name) {
+            filter.$or = [
+                { surname: { $regex: name, $options: 'i' } },
+                { othernames: { $regex: name, $options: 'i' } }
+            ];
+        }
+
+        // Search by staffID
+        if (staffID) {
+            filter['academics.staffID'] = staffID;
+        }
+
+        // Search by email (case-insensitive exact match)
+        if (email) {
+            filter.email = { $regex: `^${email}$`, $options: 'i' };
+        }
+
+        // Check if at least one filter was provided
+        if (Object.keys(filter).length === 0) {
+            return res.status(400).json({
+                status: 'failed',
+                message: 'Please provide at least one search filter: name, staffID, or email.',
+            });
+        }
+
+        // Search staff with the applied filters
+        const staff = await Staff.find(filter);
+
+
+        // Return search results
+        res.status(200).json({
+            status: 'success',
+            data: staff,
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            message: 'An error occurred while searching for staff.',
+            error: error.message,
+        });
+    }
+};
+
+exports.searchProgrammes = async (req, res) => {
+    try {
+        const { name, department } = req.query;
+
+        // Build the dynamic filter
+        const filter = {};
+
+        // Search by name (case-insensitive partial match)
+        if (name) {
+            filter.name = { $regex: name, $options: 'i' };
+        }
+
+        // Search by department ID
+        if (department) {
+            filter.department = department;
+        }
+
+        // Check if any filter was provided
+        if (Object.keys(filter).length === 0) {
+            return res.status(400).json({
+                status: 'failed',
+                message: 'Please provide at least one filter: name or department.',
+            });
+        }
+
+        // Query the Programme collection with populated department details
+        const programmes = await Programmes.find(filter).populate('department');
+
+        // Send the result
+        res.status(200).json({
+            status: 'success',
+            data: programmes,
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            message: 'An error occurred while searching for programmes.',
+            error: error.message,
+        });
+    }
+};
+
+
