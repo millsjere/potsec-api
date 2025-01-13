@@ -12,6 +12,8 @@ const FormPrice = require('../models/priceModel');
 const PDFDocument = require('pdfkit');
 const streamBuffers = require('stream-buffers');
 const Course = require('../models/CourseModel');
+const Students = require('../models/studentModel');
+const AdmissionLetter = require('../models/AdmissionLetterModel');
 
 
 
@@ -90,6 +92,51 @@ exports.getFormPrice = async (req, res) => {
         });
     }
 }
+
+
+exports.updateFormPrice = async (req, res) => {
+    try {
+        const { amount, month, year } = req.body;
+
+        // Validate input
+        if (!amount || !month || !year) {
+            return res.status(400).json({
+                status: "failed",
+                message: "Please provide amount, month, and year.",
+            });
+        }
+
+        // Update the existing form price (assuming only one exists)
+        const updatedPrice = await FormPrice.findOneAndUpdate(
+            {},                                // Match any document
+            { amount, month, year },           // Update all fields
+            { new: true }                      // Return the updated document
+        );
+
+        // If no form price was found
+        if (!updatedPrice) {
+            return res.status(404).json({
+                status: "failed",
+                message: "Form price not found.",
+            });
+        }
+
+        // Successful response
+        res.status(200).json({
+            status: "success",
+            responseCode: 200,
+            message: "Form price updated successfully.",
+            data: updatedPrice,
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            status: "failed",
+            message: "An error occurred while updating the form price.",
+            error: error.message,
+        });
+    }
+};
 
 
 // USER SIGNUP
@@ -360,7 +407,7 @@ exports.resetStaffPassword = async (req, res) => {
 // FETCH ALL STUDENTS
 exports.getAllStudents = async (req, res) => {
     try {
-        const allStudents = await Student.find({ role: 'student' }).sort('-createdAt')
+        const allStudents = await Student.find({ role: 'student' }).populate({ path: 'enrollment.programme', select: 'name' }).sort('-createdAt')
         if (!allStudents) {
             throw Error('Sorry, no student data found')
         }
@@ -405,7 +452,15 @@ exports.getAllApplicants = async (req, res) => {
 exports.getOneStudent = async (req, res) => {
     try {
         // console.log('Fetching one student data')
-        const student = await Student.findById({ _id: req.params.id }).select('-__v')
+        const student = await Student.findById({ _id: req.params.id }).populate({
+            path: 'enrollment.programme',
+            populate: {
+                path: 'courses',            // Populate the courses under the programme
+                select: 'name code credit year trimester' // Select relevant fields from Course
+            }
+        }).populate({
+            path: 'enrollment.department', select: 'name'
+        })
         if (!student) throw Error('Sorry, could not fetch student data. Please try again');
 
         // send audit //
@@ -606,67 +661,8 @@ exports.sendAdmissionLetter = async (req, res) => {
     try {
         const student = await Student.findOne({ _id: req.params.id })
 
-        // Step 1: Create PDF document
-        const doc = new PDFDocument();
-        const bufferStream = new streamBuffers.WritableStreamBuffer();
 
-        doc.pipe(bufferStream);
 
-        // Dynamic Content for the PDF
-        doc.fontSize(20).text('Prince Osei-Tutu Skills and Entrepreneurial College (POTSEC)', { align: 'center' });
-        doc.fontSize(14).text('Accra Campus', { align: 'center' });
-        doc.moveDown(2);
-
-        doc.text(`${student.surname} ${student.othernames}`, { align: 'left' });
-        doc.text(`${student.address.residence}, ${student.address.town}, ${student.address.district}`);
-        doc.text(student.phone.mobile);
-        doc.moveDown(1);
-
-        doc.fontSize(16).text('ADMISSION TO POTSEC – 2025 ACADEMIC YEAR (1ST TRIMESTER)', { align: 'left' });
-        doc.moveDown(1);
-
-        doc.fontSize(12).text(`We are pleased to inform you that the admission board for Prince Osei-Tutu Skills and Entrepreneurial College, Accra Campus has offered you admission to pursue a Three (3) year Diploma in COSMETOLOGY (Hair and Beauty) Programme on a regular option starting from 6th January, 2025.`);
-        doc.text('...');
-        doc.moveDown(2);
-
-        doc.text('Yours Sincerely,');
-        doc.text('Mr. Samuel Darko');
-        doc.text('College Principal');
-        doc.end();
-
-        // Step 2: Convert to Base64
-        bufferStream.on('finish', async () => {
-            const pdfBuffer = bufferStream.getContents();
-            const base64PDF = pdfBuffer.toString('base64');
-
-            // Step 3: Send Email with PDF Attachment
-            sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-            const msg = {
-                to: 'jeremiahmills93@gmail.com', // Replace with the recipient's email
-                from: 'POTSEC <noreply@potsec.edu.gh>', // Replace with your verified sender email
-                subject: 'Admission Letter - POTSEC',
-                text: 'Please find your admission letter attached.',
-                attachments: [
-                    {
-                        content: base64PDF,
-                        filename: 'Admission_Letter.pdf',
-                        type: 'application/pdf',
-                        disposition: 'attachment',
-                    },
-                ],
-            };
-            try {
-                await sgMail.send(msg);
-                res.status(200).json({
-                    status: 'success',
-                    responseCode: 200,
-                    message: 'Admission letter sent successfully!'
-                });
-            } catch (error) {
-                console.error('Error sending email:', error.response ? error.response.body : error.message);
-                res.status(500).send('Failed to send the email.');
-            }
-        })
 
     } catch (error) {
         console.error('Error creating PDF:', error.message);
@@ -1239,13 +1235,14 @@ exports.bulkCreateProgrammes = async (req, res) => {
         // Map through the programmes array and create each programme
         const newProgrammes = await Promise.all(
             programmes.map(async (programme) => {
-                const { name, department, duration } = programme;
+                const { name, department, duration, tuition } = programme;
 
                 // Create a new programme
                 const newProgramme = await Programmes.create({
                     name,
                     department,
                     duration,
+                    tuition
                 });
 
                 return newProgramme._id; // Return the ID of the newly created programme
@@ -1578,4 +1575,252 @@ exports.searchProgrammes = async (req, res) => {
     }
 };
 
+exports.searchDepartmentByName = async (req, res) => {
+    try {
+        const { name } = req.query;
 
+        // Validate if the name parameter is provided
+        if (!name) {
+            return res.status(400).json({
+                status: 'failed',
+                message: 'Please provide a department name to search.',
+            });
+        }
+
+        // Perform a case-insensitive search for the department name
+        const departments = await Department.find({
+            name: { $regex: name, $options: 'i' }
+        }).populate('programmes');
+
+        // Send successful response
+        res.status(200).json({
+            status: 'success',
+            data: departments,
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            message: 'An error occurred while searching for departments.',
+            error: error.message,
+        });
+    }
+};
+
+exports.searchStudents = async (req, res) => {
+    try {
+        const { name, index, status } = req.query;
+
+        // Check if at least one filter is provided
+        if (!name && !index && !status) {
+            return res.status(400).json({
+                status: 'failed',
+                message: 'Please provide either a student name or index number to search.',
+            });
+        }
+
+        // Build dynamic filter
+        const filter = {};
+
+        // Search by name (surname or othernames) - case-insensitive partial match
+        if (name) {
+            filter.$or = [
+                { surname: { $regex: name, $options: 'i' } },
+                { othernames: { $regex: name, $options: 'i' } }
+            ];
+        }
+
+        // Search by index number
+        if (index) {
+            filter['enrollment.index'] = index;
+        }
+        if (status) {
+            filter['applicationStatus'] = status;
+        }
+
+        // Find matching students
+        const students = await Student.find(filter);
+
+        // Return matching students
+        res.status(200).json({
+            status: 'success',
+            data: students,
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            message: 'An error occurred while searching for students.',
+            error: error.message,
+        });
+    }
+};
+
+exports.getCounts = async (req, res) => {
+    try {
+        // Perform parallel counting for efficiency
+        const [studentCount, staffCount, programmeCount, departmentCount] = await Promise.all([
+            Students.countDocuments({ role: 'student' }), // Count only students
+            Staff.countDocuments({ role: 'staff' }),     // Count only staff
+            Programmes.countDocuments(),                 // Count all programmes
+            Department.countDocuments()                  // Count all departments
+        ]);
+
+        // Return the counts in the response
+        res.status(200).json({
+            status: 'success',
+            data: {
+                students: studentCount,
+                staff: staffCount,
+                programmes: programmeCount,
+                departments: departmentCount,
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            message: 'An error occurred while fetching the counts.',
+            error: error.message,
+        });
+    }
+};
+
+exports.resetStaffPasswordByAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;              // Staff ID from URL params
+        const { newPassword } = req.body;       // New password from request body
+
+        // Validate if newPassword is provided
+        if (!newPassword) {
+            return res.status(400).json({
+                status: 'failed',
+                message: 'Please provide a new password.',
+            });
+        }
+
+        // Find the staff by ID
+        const staff = await Staff.findById(id);
+        if (!staff) {
+            return res.status(404).json({
+                status: 'failed',
+                message: 'Staff member not found.',
+            });
+        }
+
+        // Hash the new password
+        const hashedPassword = await hashPassword(newPassword)
+
+        // Update the staff password
+        staff.password = hashedPassword;
+        await staff.save();
+
+        // Send response
+        res.status(200).json({
+            status: 'success',
+            message: 'Password reset successfully.',
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            message: 'An error occurred while resetting the password.',
+            error: error.message,
+        });
+    }
+};
+
+exports.createAdmissionLetter = async (req, res) => {
+    try {
+        const { startDate, endDate, bank, accountNo, accountName, utilities } = req.body;
+
+        // Validate required fields
+        if (!startDate || !endDate || !bank || !accountNo || !accountName || !utilities) {
+            return res.status(400).json({
+                status: 'failed',
+                message: 'All fields (startDate, endDate, bank, accountNo, accountName, utilities) are required.',
+            });
+        }
+
+        // Create a new admission letter
+        const newAdmissionLetter = await AdmissionLetter.create({
+            startDate,
+            endDate,
+            bank,
+            accountNo,
+            accountName,
+            utilities,
+        });
+
+        // Send success response
+        res.status(201).json({
+            status: 'success',
+            message: 'Admission letter created successfully.',
+            data: newAdmissionLetter,
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            message: 'An error occurred while creating the admission letter.',
+            error: error.message,
+        });
+    }
+};
+
+exports.getAdmissionLetter = async (req, res) => {
+    try {
+        const admission = await AdmissionLetter.find()
+
+        res.status(200).json({
+            status: "success",
+            responseCode: 200,
+            data: admission[0]
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: "failed",
+            error: error,
+            message: error.message,
+        });
+    }
+}
+
+exports.updateAdmissionLetter = async (req, res) => {
+    try {
+        const { startDate, endDate, bank, accountNo, accountName, utilities } = req.body;
+
+        // Validate input: Ensure all fields are provided
+        if (!startDate || !endDate || !bank || !accountNo || !accountName || !utilities) {
+            return res.status(400).json({
+                status: 'failed',
+                message: 'All fields (startDate, endDate, bank, accountNo, accountName, utilities) are required.',
+            });
+        }
+
+        // Fully update all fields of the admission letter
+        const updatedAdmissionLetter = await AdmissionLetter.findByIdAndUpdate(
+            {},
+            {
+                startDate,
+                endDate,
+                bank,
+                accountNo,
+                accountName,
+                utilities,
+            },
+            { new: true }  // Overwrites all fields
+        );
+
+        // Return success response
+        res.status(200).json({
+            status: 'success',
+            message: 'Admission letter updated successfully.',
+            data: updatedAdmissionLetter,
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            message: 'An error occurred while updating the admission letter.',
+            error: error.message,
+        });
+    }
+};

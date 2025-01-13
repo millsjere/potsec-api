@@ -30,7 +30,7 @@ exports.registerMessage = (title, copy, code) => {
     \n
     \n
         <a style="display: inline-block; cursor: pointer; border: none; border-radius: 5px padding: 10px 17px; text-decoration: none; background: orange; color: white;" 
-            href="https://apps.potsec.edu.gh", target="_blank">Login Here
+            href="https://portal.potsec.edu.gh/staff", target="_blank">Login Here
         </a>
     \n
     \n

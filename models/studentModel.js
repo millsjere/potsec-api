@@ -43,14 +43,21 @@ const studentSchema = new mongoose.Schema({
         spoken: String,
         written: String
     },
+    hallAffiliation: { type: String },
     enrollment: {
         index: { type: String },
         type: { type: String },
         month: { type: String },
         year: { type: String },
         duration: { type: String },
-        programme: { type: String },
-        department: { type: String },
+        programme: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Programmes', // Reference to the Programmes model
+        },
+        department: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Department', // Reference to the Department model
+        },
         certification: { type: String },
         certificationLevel: { type: String },
         modeofTuition: { type: String },

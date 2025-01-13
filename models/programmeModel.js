@@ -1,13 +1,13 @@
 const mongoose = require('mongoose')
 
 const programmeSchema = new mongoose.Schema({
-    name: { 
-        type: String, 
-        required: true 
+    name: {
+        type: String,
+        required: true
     },
-    department: { 
-        type: mongoose.ObjectId, 
-        ref: 'Department' 
+    department: {
+        type: mongoose.ObjectId,
+        ref: 'Department'
     },
     duration: {
         type: { type: String, lowercase: true },
@@ -19,6 +19,11 @@ const programmeSchema = new mongoose.Schema({
             ref: 'Course', // Reference to the Course model
         },
     ],
+    tuition: {
+        currency: { type: String, default: 'GHS' },
+        amount: { type: Number, default: 0 },
+        words: String
+    },
 }, {
     timestamps: true,
     toJSON: { virtuals: true },

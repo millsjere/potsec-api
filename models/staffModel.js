@@ -37,7 +37,7 @@ const staffSchema = new mongoose.Schema({
         staffEmail: { type: String },
         campus: { type: String }
     },
-    role: { type: String, default: 'staff' },
+    role: { type: String, default: 'Staff', enum: ['staff', 'admin', 'accountant'] },
     isLoginVerified: { type: Boolean, default: false },
     verificationCode: { type: String, select: false },
     verificationCodeExpiry: { type: Date, select: false },

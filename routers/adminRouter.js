@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter, bulkAddCourses, bulkCreateProgrammes, bulkCreateDepartments, bulkAddStaff, searchStaff, searchProgrammes } = require('../controllers/adminController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter, bulkAddCourses, bulkCreateProgrammes, bulkCreateDepartments, bulkAddStaff, searchStaff, searchProgrammes, searchDepartmentByName, getCounts, searchStudents, resetStaffPasswordByAdmin, updateFormPrice, createAdmissionLetter, updateAdmissionLetter, getAdmissionLetter } = require('../controllers/adminController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
@@ -58,6 +58,7 @@ router.route('/api/staff/create').post(adminProtect, createStaff)
 router.route('/api/staff/profile/:id').post(adminProtect, updateStaffProfile)
 router.route('/api/staff/photo/:id').patch(adminProtect, uploadStaffPhoto.single('photo'), updateStaffPhoto)
 router.route('/api/staff/remove/:id').delete(adminProtect, deleteStaff)
+router.route('/api/staff/reset-staff-password/:id').post(adminProtect, resetStaffPasswordByAdmin)
 
 // Admin --> Department Routes //
 router.route('/api/staff/departments').get(adminProtect, getAllDepartments)
@@ -86,13 +87,18 @@ router.route('/api/staff/departments/bulk-upload').post(adminProtect, bulkCreate
 // Query Routes //
 router.route('/api/search/staff').get(adminProtect, searchStaff)
 router.route('/api/search/programmes').get(adminProtect, searchProgrammes)
-router.route('/api/search/departments').get(adminProtect, getAllStaff)
-router.route('/api/search/students').get(adminProtect, getAllStaff)
+router.route('/api/search/departments').get(adminProtect, searchDepartmentByName)
+router.route('/api/search/students').get(adminProtect, searchStudents)
+router.route('/api/dashboard/count').get(adminProtect, getCounts)
 
 
 
 // Staff Routes //
 router.route('/api/admission/form').get(getFormPrice)
+router.route('/api/admission/letter').get(adminProtect, getAdmissionLetter)
+router.route('/api/admission/details').patch(adminProtect, updateFormPrice)
+router.route('/api/admission/letter').post(adminProtect, createAdmissionLetter)
+router.route('/api/admission/letter').patch(adminProtect, updateAdmissionLetter)
 
 
 module.exports = router
