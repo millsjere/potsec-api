@@ -12,7 +12,7 @@ const path = require('path')
 const studentRouter = require('./routers/studentRouter')//Routers
 const adminRouter = require('./routers/adminRouter')
 
-const whiteList = ["https://admissions.potsec.edu.gh", "https://students.potsec.edu.gh", "http://localhost:8001", "http://localhost:5000", "http://localhost:8002"]
+const whiteList = ["https://admissions.potsec.edu.gh", "https://portal.potsec.edu.gh", "http://localhost:8001", "http://localhost:5000", "http://localhost:8002"]
 const corsOptions = {
   origin: (origin, cb) => {
     if (whiteList.indexOf(origin) !== -1) {

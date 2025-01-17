@@ -9,11 +9,11 @@ const { sendSMS } = require('../sms/ghsms');
 const Department = require('../models/departmentModel');
 const Programmes = require('../models/programmeModel');
 const FormPrice = require('../models/priceModel');
-const PDFDocument = require('pdfkit');
-const streamBuffers = require('stream-buffers');
 const Course = require('../models/CourseModel');
 const Students = require('../models/studentModel');
 const AdmissionLetter = require('../models/AdmissionLetterModel');
+const { sendAdmissionLetter } = require('../mailer/admissionTemplate');
+const ResultsUpload = require('../models/ResultFilesModel');
 
 
 
@@ -73,6 +73,26 @@ const tokenMessage = (user, code) => {
     };
     return msg
 }
+
+const getFormattedAdmissionDate = (date) => {
+    const options = { month: 'short' }; // Short month format (e.g., SEP)
+    const month = date.toLocaleString('en-US', options).toUpperCase(); // Convert to uppercase
+    const year = date.getFullYear(); // Get the full year
+    return `${month}${year}`;
+};
+
+const getFutureFormattedDate = (monthsAhead = 0, yearsAhead = 0) => {
+    const date = new Date();
+    // Add years and months
+    date.setFullYear(date.getFullYear() + yearsAhead);
+    date.setMonth(date.getMonth() + monthsAhead);
+
+    const options = { month: 'short' };  // Format month as short (e.g., SEP)
+    const month = date.toLocaleString('en-US', options).toUpperCase();
+    const year = date.getFullYear();
+
+    return `${month}${year}`;
+};
 
 // GET FORM PRICE //
 exports.getFormPrice = async (req, res) => {
@@ -659,9 +679,22 @@ exports.updateStudentPassword = async (req, res) => {
 // RESEND STUDENT ADMISSION LETTER
 exports.sendAdmissionLetter = async (req, res) => {
     try {
-        const student = await Student.findOne({ _id: req.params.id })
+        const student = await Student.findOne({ _id: req.params.id }).populate({
+            path: 'enrollment.programme',
+            populate: {
+                path: 'courses'
+            }
+        }).populate('enrollment.department')
+        const admission = await AdmissionLetter.find()
 
+        // send admission letter
+        await sendAdmissionLetter(student, student.enrollment.programme, student.admissionDate, admission[0])
 
+        // send res to client
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200
+        })
 
 
     } catch (error) {
@@ -784,6 +817,45 @@ exports.updateStaffPhoto = async (req, res) => {
             error: error,
             message: error.message
         })
+    }
+}
+
+exports.updateStaffPassword = async (req, res) => {
+    try {
+        // console.log(req.body)
+        const { password, oldPassword } = req.body
+        const user = await Staff.findOne({ email: req.user.email }).select('+password')
+        if (!user) throw Error('No user account found')
+
+        const verified = await bcrypt.compare(oldPassword, user.password);
+        // console.log('veerified ===>', verified)
+
+        if (!verified) throw Error('Current password is not correct. Please try again')
+        if (verified) {
+            const newPassword = await hashPassword(password);
+            // update and save user account
+            user.password = newPassword
+            await user.save();
+
+            //notification//
+            await Notify.create({
+                user: user.id,
+                title: 'Password Updated',
+                message: 'Your password has been updated successfully.'
+            });
+
+            //send res to client
+            res.status(200).json({
+                status: "success"
+            });
+        }
+
+    } catch (error) {
+        res.status(500).json({
+            status: "failed",
+            error: error,
+            message: error.message,
+        });
     }
 }
 
@@ -941,70 +1013,6 @@ exports.createDepartment = async (req, res) => {
     }
 }
 
-//  BULK DEPARTMENT UPLOAD
-// exports.bulkCreateDepartments = async (req, res) => {
-//     try {
-//         const departments = req.body.departments; // Expecting an array of departments
-
-//         if (!Array.isArray(departments) || departments.length === 0) {
-//             return res.status(400).json({
-//                 status: 'failed',
-//                 message: 'Invalid or empty department data',
-//             });
-//         }
-
-//         const createdDepartments = [];
-//         const errors = [];
-
-//         for (const department of departments) {
-//             try {
-//                 const { name, head } = department;
-
-//                 // Validate required fields
-//                 if (!name || !head) {
-//                     throw new Error('Missing required fields: name or head');
-//                 }
-
-//                 // Check for duplicate department name
-//                 const existingDepartment = await Department.findOne({ name });
-//                 if (existingDepartment) {
-//                     errors.push({
-//                         name,
-//                         message: 'Department already exists',
-//                     });
-//                     continue;
-//                 }
-
-//                 // Create new department
-//                 const dept = await Department.create({ name, head });
-//                 createdDepartments.push(dept);
-//             } catch (err) {
-//                 console.error('Error creating department:', err.message);
-//                 errors.push({
-//                     department: department.name,
-//                     message: err.message,
-//                 });
-//             }
-//         }
-
-//         // Send response
-//         res.status(200).json({
-//             status: 'success',
-//             message: 'Bulk department upload completed',
-//             created: createdDepartments.length,
-//             failed: errors.length,
-//             errors,
-//         });
-//     } catch (err) {
-//         console.error('Error in bulk department upload:', err.message);
-//         res.status(500).json({
-//             status: 'failed',
-//             message: 'An error occurred during bulk department upload',
-//             error: err.message,
-//         });
-//     }
-// };
-
 exports.bulkCreateDepartments = async (req, res) => {
     try {
         const { departments } = req.body; // `departments` should be an array of department objects
@@ -1160,70 +1168,6 @@ exports.createProgramme = async (req, res) => {
         })
     }
 }
-
-// BULK PROGRAMMES UPLOAD
-// exports.bulkCreateProgrammes = async (req, res) => {
-//     try {
-//         const programmes = req.body.programmes; // Expecting an array of programmes
-
-//         if (!Array.isArray(programmes) || programmes.length === 0) {
-//             return res.status(400).json({
-//                 status: 'failed',
-//                 message: 'Invalid or empty programme data',
-//             });
-//         }
-
-//         const createdProgrammes = [];
-//         const errors = [];
-
-//         for (const programme of programmes) {
-//             try {
-//                 const { name, department, duration } = programme;
-
-//                 // Validate required fields
-//                 if (!name || !department || !duration) {
-//                     throw new Error('Missing required fields: name, department, or duration');
-//                 }
-
-//                 // Check for duplicate programme name in the same department
-//                 const existingProgramme = await Programmes.findOne({ name, department });
-//                 if (existingProgramme) {
-//                     errors.push({
-//                         name,
-//                         message: 'Programme already exists in this department',
-//                     });
-//                     continue;
-//                 }
-
-//                 // Create new programme
-//                 const prog = await Programmes.create({ name, department, duration });
-//                 createdProgrammes.push(prog);
-//             } catch (err) {
-//                 console.error('Error creating programme:', err.message);
-//                 errors.push({
-//                     programme: programme.name,
-//                     message: err.message,
-//                 });
-//             }
-//         }
-
-//         // Send response
-//         res.status(200).json({
-//             status: 'success',
-//             message: 'Bulk programme upload completed',
-//             created: createdProgrammes.length,
-//             failed: errors.length,
-//             errors,
-//         });
-//     } catch (err) {
-//         console.error('Error in bulk programme upload:', err.message);
-//         res.status(500).json({
-//             status: 'failed',
-//             message: 'An error occurred during bulk programme upload',
-//             error: err.message,
-//         });
-//     }
-// };
 
 exports.bulkCreateProgrammes = async (req, res) => {
     try {
@@ -1429,16 +1373,23 @@ exports.deleteStudent = async (req, res) => {
 
 exports.admitStudent = async (req, res) => {
     try {
-        const student = await Student.findById({ _id: req.params.id })
+        const student = await Student.findById({ _id: req.params.id }).populate('enrollment.programme')
         if (!student) throw Error('Applicant does not exist. Please try again')
 
         // generate index no. and update role
+        const programme = student.enrollment.programme
         const indexNo = await generateIndex();
         student.role = 'student';
         student.applicationStatus = 'admitted';
         student.applicationStage = 4;
         student.enrollment.index = indexNo;
-        student.admissionDate = new Date();
+        student.doa =  getFormattedAdmissionDate(new Date());
+        if(programme.duration.type === 'months'){
+            student.doc = getFutureFormattedDate(programme.duration.number)
+        }
+        if(programme.duration.type === 'years'){
+            student.doc = getFutureFormattedDate(0, programme.duration.number)
+        }
 
         // send SMS to student no.
         const message = `Congratulations, ${student.surname}! 🎉 You’ve been admitted to POTSEC. Welcome to the family! Check your email for details. Questions? Contact us at 0247142800`
@@ -1824,3 +1775,26 @@ exports.updateAdmissionLetter = async (req, res) => {
         });
     }
 };
+
+exports.getAllResultsFiles = async (req, res) => {
+    try {
+        const ups = await ResultsUpload.find().sort({ createdAt: -1 })
+        if (!ups) throw Error('Sorry, could not fetch results uploads. Please try again');
+
+        // send audit //
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200,
+            data: ups
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}

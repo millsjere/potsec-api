@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter, bulkAddCourses, bulkCreateProgrammes, bulkCreateDepartments, bulkAddStaff, searchStaff, searchProgrammes, searchDepartmentByName, getCounts, searchStudents, resetStaffPasswordByAdmin, updateFormPrice, createAdmissionLetter, updateAdmissionLetter, getAdmissionLetter } = require('../controllers/adminController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter, bulkAddCourses, bulkCreateProgrammes, bulkCreateDepartments, bulkAddStaff, searchStaff, searchProgrammes, searchDepartmentByName, getCounts, searchStudents, resetStaffPasswordByAdmin, updateFormPrice, createAdmissionLetter, updateAdmissionLetter, getAdmissionLetter, updateStaffPassword, getAllResultsFiles } = require('../controllers/adminController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
@@ -58,6 +58,7 @@ router.route('/api/staff/create').post(adminProtect, createStaff)
 router.route('/api/staff/profile/:id').post(adminProtect, updateStaffProfile)
 router.route('/api/staff/photo/:id').patch(adminProtect, uploadStaffPhoto.single('photo'), updateStaffPhoto)
 router.route('/api/staff/remove/:id').delete(adminProtect, deleteStaff)
+router.route('/api/staff/reset-password').post(adminProtect, updateStaffPassword)
 router.route('/api/staff/reset-staff-password/:id').post(adminProtect, resetStaffPasswordByAdmin)
 
 // Admin --> Department Routes //
@@ -76,6 +77,8 @@ router.route('/api/staff/programmes/:id').delete(adminProtect, deleteProgramme)
 router.route('/api/staff/course/add').patch(adminProtect, addCourse)
 router.route('/api/staff/course/delete').patch(adminProtect, removeCourse)
 
+// Grading Routes //
+router.route('/api/staff/results/all-files').get(adminProtect, getAllResultsFiles)
 
 // Bulk Upload Routes //
 router.route('/api/staff/students/bulk-upload').post(adminProtect, bulkAddCourses)
