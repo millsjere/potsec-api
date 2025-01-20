@@ -14,6 +14,7 @@ const Students = require('../models/studentModel');
 const AdmissionLetter = require('../models/AdmissionLetterModel');
 const { sendAdmissionLetter } = require('../mailer/admissionTemplate');
 const ResultsUpload = require('../models/ResultFilesModel');
+const GradeModel = require('../models/GradeModel');
 
 
 
@@ -1383,11 +1384,11 @@ exports.admitStudent = async (req, res) => {
         student.applicationStatus = 'admitted';
         student.applicationStage = 4;
         student.enrollment.index = indexNo;
-        student.doa =  getFormattedAdmissionDate(new Date());
-        if(programme.duration.type === 'months'){
+        student.doa = getFormattedAdmissionDate(new Date());
+        if (programme.duration.type === 'months') {
             student.doc = getFutureFormattedDate(programme.duration.number)
         }
-        if(programme.duration.type === 'years'){
+        if (programme.duration.type === 'years') {
             student.doc = getFutureFormattedDate(0, programme.duration.number)
         }
 
@@ -1776,9 +1777,16 @@ exports.updateAdmissionLetter = async (req, res) => {
     }
 };
 
+
+
+//  GRADING 
 exports.getAllResultsFiles = async (req, res) => {
     try {
-        const ups = await ResultsUpload.find().sort({ createdAt: -1 })
+        const ups = await ResultsUpload.find().populate({
+            path: 'course',
+            select: 'name year trimester',
+            populate: { path: 'program', select: 'name' }
+        }).populate({ path: 'uploadBy', select: 'surname othernames' }).sort({ createdAt: -1 })
         if (!ups) throw Error('Sorry, could not fetch results uploads. Please try again');
 
         // send audit //
@@ -1788,6 +1796,82 @@ exports.getAllResultsFiles = async (req, res) => {
             status: 'success',
             responseCode: 200,
             data: ups
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+exports.bulkGradesUpload = async (req, res) => {
+    try {
+        const { grades } = req.body; // `grades` should be an array of department objects
+        if (!Array.isArray(grades) || grades.length === 0) {
+            throw new Error("No grades provided for bulk upload.");
+        }
+
+        // Map through the departments array and create each department
+        const newGrades = await Promise.all(
+            grades.map(async (gradeRow) => {
+                const { student, course } = gradeRow;
+
+                // find student and course //
+                const studentData = await Student.findOne({ "enrollment.index": student });
+                const courseData = await Course.findOne({ code: course });
+
+                // Create a new department
+                const newGrade = await GradeModel.create({
+                    ...gradeRow,
+                    student: studentData._id,
+                    course: courseData._id
+                });
+
+                return newGrade._id; // Return the ID of the newly created department
+            })
+        );
+
+        // Send response to client
+        res.status(200).json({
+            status: "success",
+            responseCode: 200,
+            message: `${newGrades.length} grades added successfully.`,
+        });
+    } catch (error) {
+        res.status(400).json({
+            status: "failed",
+            error: error,
+            message: error.message,
+        });
+    }
+};
+
+// UPLOAD RESULTS FILE
+exports.uploadGradesFile = async (req, res) => {
+    try {
+        // console.log('file ==> ', req.file)
+        const { course_code } = req.body
+        if (!req.file) {
+            throw Error('Sorry, could not upload grades file')
+        }
+        //fetch user from database
+        const course = await Course.findOne({ code: course_code })
+        if (!course) throw Error('Sorry, course code is invalid or does not exist')
+
+        // save a result-file
+        await ResultsUpload.create({
+            fileName: req.file.originalname,
+            fileUrl: req.file.path,
+            course: course.id,
+            uploadBy: req.user._id
+        })
+
+        // send res to client
+        res.status(200).json({
+            status: 'success',
         })
 
     } catch (error) {

@@ -4,31 +4,42 @@ const dotenv = require('dotenv')
 const mongoose = require('mongoose')
 const helmet = require('helmet')
 const cors = require('cors');
-const multer = require('multer');
 const cookieParser = require('cookie-parser');
-const path = require('path')
 
 //Routers
 const studentRouter = require('./routers/studentRouter')//Routers
 const adminRouter = require('./routers/adminRouter')
 
-const whiteList = ["https://admissions.potsec.edu.gh", "https://portal.potsec.edu.gh", "http://localhost:8001", "http://localhost:5000", "http://localhost:8002"]
+const whiteList = [
+  "https://admissions.potsec.edu.gh",
+  "https://portal.potsec.edu.gh",
+  "http://localhost:5000",
+  "http://localhost:8001",
+  "http://localhost:8002",
+];
+
 const corsOptions = {
   origin: (origin, cb) => {
-    if (whiteList.indexOf(origin) !== -1) {
-      cb(null, true)
+    if (!origin || whiteList.indexOf(origin) !== -1) {
+      // console.log('Access granted for this: ' + origin)
+      cb(null, true);
     } else {
-      cb(new Error('Access Restricted'))
+      // console.log('Access restricted')
+      cb(new Error("Access Restricted"));
     }
   },
-  credentials: true,
-  optionsSuccessStatus: 200
-}
+  credentials: true, // Allow credentials (cookies, authorization headers, etc.)
+  optionsSuccessStatus: 200, // Response for preflight requests
+};
 
-//Parsers //
-app.enable('trust proxy');
+// Enable CORS with options
 app.use(cors(corsOptions));
-app.options('*', cors()); // this enables pre-flight mode
+
+// Handle preflight requests
+app.options("*", cors(corsOptions));
+
+// Parsers and additional middleware
+app.enable("trust proxy");// this enables pre-flight mode
 app.use(helmet());
 app.use(express.json());
 dotenv.config({ path: './config.env' });

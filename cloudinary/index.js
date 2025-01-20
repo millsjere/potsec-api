@@ -14,7 +14,7 @@ const studentPhotoStorage = new CloudinaryStorage({
   params: {
     folder: (req, file) => `potsec/students/${req.params.id}`,
     allowedFormats: ["jpeg", "png", "jpg"],
-    public_id: (req, file) => `profile_photo`
+    public_id: (req, file) => `profile_photo/${req.params.id}`
   },
 });
 
@@ -23,10 +23,29 @@ const staffPhotoStorage = new CloudinaryStorage({
   params: {
     folder: (req, file) => `potsec/staff/${req.params.id}`,
     allowedFormats: ["jpeg", "png", "jpg"],
-    public_id: (req, file) => `staff_photo`
+    public_id: (req, file) => `staff_photo/${req.params.id}`
+  },
+});
+
+const gradesStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: (req, file) => {
+      // console.log('Folder path:', `potsec/grades/${req.body.course_code}`);
+      return `potsec/grading/${req.body.course_code}`
+    },
+    resource_type: 'raw', // Important: Allow non-image files (e.g., csv, xlsx)
+    allowedFormats: ["csv", "xlsx", "xls", "numbers"],
+    public_id: (req, file) => {
+      const timestamp = Date.now();
+      const fileName = file.originalname.split('.')[0]; // Remove file extension
+      const publicID = `${fileName}-${timestamp}`;
+      // console.log('PublicID ==>', publicID)
+      return publicID;
+    },
   },
 });
 
 
-module.exports = { studentPhotoStorage, staffPhotoStorage }
+module.exports = { studentPhotoStorage, staffPhotoStorage, gradesStorage }
 

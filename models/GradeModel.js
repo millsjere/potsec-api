@@ -12,12 +12,12 @@ const GradeSchema = new mongoose.Schema({
         required: true,
     },
     grade: {
-        type: String, 
+        type: String,
         required: true,
         enum: ['A', 'B+', 'B', 'C+', 'C', 'D', 'E', 'F'], // Restrict grades to these values
     },
     score: {
-        type: Double,
+        type: Number,
         required: false,
         min: 0,
         max: 100, // Assuming marks are out of 100

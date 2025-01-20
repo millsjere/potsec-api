@@ -1,14 +1,16 @@
 const mongoose = require('mongoose')
 
 const resultFilesSchema = new mongoose.Schema({
-  name: { type: String },
-  fileUrl: {type: String },
-  programme: {
+  fileName: { type: String },
+  fileUrl: { type: String },
+  uploadBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Programmes', // Reference to the Programmes model
-  },  
-  year: { type: Number },
-  trimester: { type: String },
+    ref: 'Staff', // Reference to the Courses model
+  },
+  course: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course', // Reference to the Courses model
+  },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

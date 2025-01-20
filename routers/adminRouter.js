@@ -1,9 +1,9 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter, bulkAddCourses, bulkCreateProgrammes, bulkCreateDepartments, bulkAddStaff, searchStaff, searchProgrammes, searchDepartmentByName, getCounts, searchStudents, resetStaffPasswordByAdmin, updateFormPrice, createAdmissionLetter, updateAdmissionLetter, getAdmissionLetter, updateStaffPassword, getAllResultsFiles } = require('../controllers/adminController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter, bulkAddCourses, bulkCreateProgrammes, bulkCreateDepartments, bulkAddStaff, searchStaff, searchProgrammes, searchDepartmentByName, getCounts, searchStudents, resetStaffPasswordByAdmin, updateFormPrice, createAdmissionLetter, updateAdmissionLetter, getAdmissionLetter, updateStaffPassword, getAllResultsFiles, uploadGradesFile, bulkGradesUpload } = require('../controllers/adminController');
 const router = express.Router();
 const multer = require('multer');
-const { studentPhotoStorage, staffPhotoStorage } = require('../cloudinary');
+const { studentPhotoStorage, staffPhotoStorage, gradesStorage } = require('../cloudinary');
 
 const uploadPhoto = multer({
     storage: studentPhotoStorage,
@@ -26,6 +26,18 @@ const uploadStaffPhoto = multer({
             return cb(null, false);
         }
     }
+})
+const uploadGrades = multer({
+    storage: gradesStorage,
+    fileFilter: (req, file, cb) => {
+        // console.log('RAW FILE FOR PROCESSING ==>', file);
+        if (file.originalname.match(/\.(csv|xls|xlsx|numbers)$/)) {
+            cb(null, true); // Accept the file
+        } else {
+            cb(new Error('Invalid file type. Only CSV, XLS, XLSX, and Numbers files are allowed.'));
+        }
+    },
+    limits: { fileSize: 5 * 1024 * 1024 }, // Optional: Limit file size to 5MB
 })
 
 
@@ -78,7 +90,8 @@ router.route('/api/staff/course/add').patch(adminProtect, addCourse)
 router.route('/api/staff/course/delete').patch(adminProtect, removeCourse)
 
 // Grading Routes //
-router.route('/api/staff/results/all-files').get(adminProtect, getAllResultsFiles)
+router.route('/api/staff/results/files').get(adminProtect, getAllResultsFiles)
+router.route('/api/staff/results/files').post(adminProtect, uploadGrades.single('grades'), uploadGradesFile)
 
 // Bulk Upload Routes //
 router.route('/api/staff/students/bulk-upload').post(adminProtect, bulkAddCourses)
@@ -86,6 +99,7 @@ router.route('/api/staff/users/bulk-upload').post(adminProtect, bulkAddStaff)
 router.route('/api/staff/courses/bulk-upload').post(adminProtect, bulkAddCourses)
 router.route('/api/staff/programmes/bulk-upload').post(adminProtect, bulkCreateProgrammes)
 router.route('/api/staff/departments/bulk-upload').post(adminProtect, bulkCreateDepartments)
+router.route('/api/staff/grades/bulk-upload').post(adminProtect, bulkGradesUpload)
 
 // Query Routes //
 router.route('/api/search/staff').get(adminProtect, searchStaff)
@@ -93,7 +107,6 @@ router.route('/api/search/programmes').get(adminProtect, searchProgrammes)
 router.route('/api/search/departments').get(adminProtect, searchDepartmentByName)
 router.route('/api/search/students').get(adminProtect, searchStudents)
 router.route('/api/dashboard/count').get(adminProtect, getCounts)
-
 
 
 // Staff Routes //
