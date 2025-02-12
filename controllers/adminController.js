@@ -117,7 +117,7 @@ exports.getFormPrice = async (req, res) => {
 
 exports.updateFormPrice = async (req, res) => {
     try {
-        const { amount, month, year } = req.body;
+        const { amount, month, year, closingDate } = req.body;
 
         // Validate input
         if (!amount || !month || !year) {
@@ -130,7 +130,7 @@ exports.updateFormPrice = async (req, res) => {
         // Update the existing form price (assuming only one exists)
         const updatedPrice = await FormPrice.findOneAndUpdate(
             {},                                // Match any document
-            { amount, month, year },           // Update all fields
+            { amount, month, year, closingDate },// Update all fields
             { new: true }                      // Return the updated document
         );
 
@@ -1150,8 +1150,8 @@ exports.getOneProgramme = async (req, res) => {
 // CREATE PRROGRAMME //
 exports.createProgramme = async (req, res) => {
     try {
-        const { name, department, duration } = req.body
-        const prog = await Programmes.create({ name, department, duration })
+        const { name, department, duration, tuition, certification } = req.body
+        const prog = await Programmes.create({ name, department, duration, tuition, certification })
         if (!prog) throw Error('Sorry, programme creation failed. Please try again');
 
         // send audit //
@@ -1187,7 +1187,8 @@ exports.bulkCreateProgrammes = async (req, res) => {
                     name,
                     department,
                     duration,
-                    tuition
+                    tuition,
+                    certification
                 });
 
                 return newProgramme._id; // Return the ID of the newly created programme
@@ -1214,8 +1215,8 @@ exports.bulkCreateProgrammes = async (req, res) => {
 // CREATE PRROGRAMME //
 exports.updateProgramme = async (req, res) => {
     try {
-        const { id, name, department, duration } = req.body
-        const prog = await Programmes.findByIdAndUpdate({ _id: id }, { name, department, duration })
+        const { name, department, duration, tuition, certification } = req.body
+        const prog = await Programmes.findByIdAndUpdate({ _id: req.params.id }, { name, department, duration, tuition, certification })
         if (!prog) throw Error('Sorry, programme update failed. Please try again');
 
         // send audit //

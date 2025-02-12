@@ -5,6 +5,10 @@ const programmeSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    certification: [{
+        type: String,
+        required: true
+    }],
     department: {
         type: mongoose.ObjectId,
         ref: 'Department'
