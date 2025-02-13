@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter, bulkAddCourses, bulkCreateProgrammes, bulkCreateDepartments, bulkAddStaff, searchStaff, searchProgrammes, searchDepartmentByName, getCounts, searchStudents, resetStaffPasswordByAdmin, updateFormPrice, createAdmissionLetter, updateAdmissionLetter, getAdmissionLetter, updateStaffPassword, getAllResultsFiles, uploadGradesFile, bulkGradesUpload } = require('../controllers/adminController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter, bulkAddCourses, bulkCreateProgrammes, bulkCreateDepartments, bulkAddStaff, searchStaff, searchProgrammes, searchDepartmentByName, getCounts, searchStudents, resetStaffPasswordByAdmin, updateFormPrice, createAdmissionLetter, updateAdmissionLetter, getAdmissionLetter, updateStaffPassword, getAllResultsFiles, uploadGradesFile, bulkGradesUpload, denyStudentAdmission, resendAdmissionLetter } = require('../controllers/adminController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage, gradesStorage } = require('../cloudinary');
@@ -40,6 +40,9 @@ const uploadGrades = multer({
     limits: { fileSize: 5 * 1024 * 1024 }, // Optional: Limit file size to 5MB
 })
 
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
 
 // Auth Routes //
 // router.route('/api/staff/create').post(createAccount)
@@ -50,8 +53,9 @@ router.route('/api/staff/resend-email-token').get(staffProtect, resendEmailToken
 router.route('/api/staff/verify-login').post(staffProtect, verifyUserAccount)
 
 router.route('/api/all-applicants').get(adminProtect, getAllApplicants)
-router.route('/api/applicant/admit/:id').post(adminProtect, admitStudent)
-router.route('/api/applicant/deny/:id').post(adminProtect, deleteStudent)
+router.route('/api/applicant/admit/:id').post(adminProtect, upload.single('attachment'), admitStudent)
+router.route('/api/applicant/admit/:id/resend').post(adminProtect, upload.single('attachment'), resendAdmissionLetter)
+router.route('/api/applicant/deny/:id').post(adminProtect, denyStudentAdmission)
 router.route('/api/applicant/:id').delete(adminProtect, deleteStudent)
 
 // Admin -> Student Routes //

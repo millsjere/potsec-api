@@ -7,7 +7,6 @@ const programmeSchema = new mongoose.Schema({
     },
     certification: [{
         type: String,
-        required: true
     }],
     department: {
         type: mongoose.ObjectId,
@@ -26,6 +25,7 @@ const programmeSchema = new mongoose.Schema({
     tuition: {
         currency: { type: String, default: 'GHS' },
         amount: { type: Number, default: 0 },
+        semester: { type: Number, default: 0 },
         words: String
     },
 }, {

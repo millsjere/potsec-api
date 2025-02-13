@@ -10,8 +10,8 @@ const CourseSchema = new mongoose.Schema({
         required: true,
         unique: true,
     },
-    trimester: {
-        type: String, // "Trimester 1", "Trimester 2", etc.
+    semester: {
+        type: String, // "Semester 1", "Semester 2", etc.
         required: true,
     },
     year: {

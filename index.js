@@ -21,10 +21,10 @@ const whiteList = [
 const corsOptions = {
   origin: (origin, cb) => {
     if (!origin || whiteList.indexOf(origin) !== -1) {
-      // console.log('Access granted for this: ' + origin)
+      console.log('Access granted for this: ' + origin)
       cb(null, true);
     } else {
-      // console.log('Access restricted')
+      console.log('Access restricted')
       cb(new Error("Access Restricted"));
     }
   },

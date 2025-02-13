@@ -477,7 +477,7 @@ exports.getOneStudent = async (req, res) => {
             path: 'enrollment.programme',
             populate: {
                 path: 'courses',            // Populate the courses under the programme
-                select: 'name code credit year trimester' // Select relevant fields from Course
+                select: 'name code credit year semester' // Select relevant fields from Course
             }
         }).populate({
             path: 'enrollment.department', select: 'name'
@@ -1126,7 +1126,7 @@ exports.getOneProgramme = async (req, res) => {
         // console.log('Fetching one programme')
         const prog = await Programmes.findById({ _id: req.params.id })
             .populate('department')
-            .populate({ path: 'courses', select: 'name code trimester year credit' })
+            .populate({ path: 'courses', select: 'name code semester year credit' })
             .select('-__v -_id')
         if (!prog) throw Error('Sorry, could not fetch programmes. Please try again');
 
@@ -1259,9 +1259,9 @@ exports.deleteProgramme = async (req, res) => {
 exports.addCourse = async (req, res) => {
     try {
         const { id, course } = req.body
-        const { name, code, trimester, credit, year } = course
+        const { name, code, semester, credit, year } = course
         // create a new course
-        const newCourse = await Course.create({ name, code, trimester, year, credit, program: id })
+        const newCourse = await Course.create({ name, code, semester, year, credit, program: id })
         // find the program by id and add course id
         const prog = await Programmes.findByIdAndUpdate(id, { $push: { courses: newCourse.id } }, { new: true })
         if (!prog) throw Error('Sorry, adding course failed. Please try again');
@@ -1290,13 +1290,13 @@ exports.bulkAddCourses = async (req, res) => {
         // Map through the courses array and create each course
         const newCourses = await Promise.all(
             courses.map(async (course) => {
-                const { name, code, trimester, credit, year } = course;
+                const { name, code, semester, credit, year } = course;
 
                 // Create a new course and associate it with the program
                 const newCourse = await Course.create({
                     name,
                     code,
-                    trimester,
+                    semester,
                     year,
                     credit,
                     program: id,
@@ -1373,6 +1373,26 @@ exports.deleteStudent = async (req, res) => {
     }
 }
 
+exports.denyStudentAdmission = async (req, res) => {
+    try {
+        await Student.findByIdAndDelete({ _id: req.params.id })
+
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200
+        })
+
+    } catch (error) {
+        res.status(404).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+
 exports.admitStudent = async (req, res) => {
     try {
         const student = await Student.findById({ _id: req.params.id }).populate('enrollment.programme')
@@ -1394,7 +1414,7 @@ exports.admitStudent = async (req, res) => {
         }
 
         // send SMS to student no.
-        const message = `Congratulations, ${student.surname}! 🎉 You’ve been admitted to POTSEC. Welcome to the family! Check your email for details. Questions? Contact us at 0247142800`
+        const message = `Congratulations, ${student.surname}! You've been admitted to POTSEC. Welcome to the family! Check your email for details. Questions? Contact us at 0247142800`
         await sendSMS(student.phone.mobile, message);
 
         // send email
@@ -1404,6 +1424,16 @@ exports.admitStudent = async (req, res) => {
             from: "POTSEC <noreply@potsec.edu.gh>",
             subject: "Admission Confirmation - POTSEC",
             html: welcomeMessage(student.surname, indexNo),
+            attachments: req.file
+                ? [
+                    {
+                        content: req.file.buffer.toString('base64'), // Encode file in Base64
+                        filename: req.file.originalname,
+                        type: req.file.mimetype,
+                        disposition: 'attachment',
+                    },
+                ]
+                : [],
         };
         await sgMail.send(msg);
 
@@ -1416,6 +1446,45 @@ exports.admitStudent = async (req, res) => {
 
         await student.save();
 
+        // send response to client //
+        res.status(200).json({
+            status: 'success',
+            responseCode: 200
+        })
+    } catch (error) {
+        res.status(500).json({
+            status: 'failed',
+            error: error,
+            message: error.message
+        })
+    }
+}
+
+exports.resendAdmissionLetter = async (req, res) => {
+    try {
+        const student = await Student.findById({ _id: req.params.id }).populate('enrollment.programme')
+        if (!student) throw Error('Applicant does not exist. Please try again')
+
+        // send email
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+        const msg = {
+            to: student.email,
+            from: "POTSEC <noreply@potsec.edu.gh>",
+            subject: "Admission Confirmation - POTSEC",
+            html: welcomeMessage(student.surname, ''),
+            attachments: req.file
+                ? [
+                    {
+                        content: req.file.buffer.toString('base64'), // Encode file in Base64
+                        filename: req.file.originalname,
+                        type: req.file.mimetype,
+                        disposition: 'attachment',
+                    },
+                ]
+                : [],
+        };
+        await sgMail.send(msg);
+        await student.save();
 
         // send response to client //
         res.status(200).json({
@@ -1785,7 +1854,7 @@ exports.getAllResultsFiles = async (req, res) => {
     try {
         const ups = await ResultsUpload.find().populate({
             path: 'course',
-            select: 'name year trimester',
+            select: 'name year semester',
             populate: { path: 'program', select: 'name' }
         }).populate({ path: 'uploadBy', select: 'surname othernames' }).sort({ createdAt: -1 })
         if (!ups) throw Error('Sorry, could not fetch results uploads. Please try again');
