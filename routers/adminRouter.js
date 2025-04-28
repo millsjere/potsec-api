@@ -1,6 +1,6 @@
 const express = require('express');
 const { staffProtect, adminProtect } = require('../controllers/authController');
-const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter, bulkAddCourses, bulkCreateProgrammes, bulkCreateDepartments, bulkAddStaff, searchStaff, searchProgrammes, searchDepartmentByName, getCounts, searchStudents, resetStaffPasswordByAdmin, updateFormPrice, createAdmissionLetter, updateAdmissionLetter, getAdmissionLetter, updateStaffPassword, getAllResultsFiles, uploadGradesFile, bulkGradesUpload, denyStudentAdmission, resendAdmissionLetter } = require('../controllers/adminController');
+const { createAccount, staffLogin, staffForgetPassword, resetStaffPassword, resendEmailToken, verifyUserAccount, createStudent, createStaff, updateStudentProfile, updateStudentPhoto, updateStudentDocuments, getAllStudents, getAllStaff, updateStaffPhoto, getAllDepartments, createDepartment, getAllProgrammes, createProgramme, updateDepartment, updateProgramme, deleteProgramme, deleteDepartment, getOneProgramme, addCourse, removeCourse, getOneStudent, updateStudentPassword, getFormPrice, checkEmailAndPhone, deleteStudent, admitStudent, getAllApplicants, deleteStaff, updateStaffProfile, sendAdmissionLetter, bulkAddCourses, bulkCreateProgrammes, bulkCreateDepartments, bulkAddStaff, searchStaff, searchProgrammes, searchDepartmentByName, getCounts, searchStudents, resetStaffPasswordByAdmin, updateFormPrice, createAdmissionLetter, updateAdmissionLetter, getAdmissionLetter, updateStaffPassword, getAllResultsFiles, uploadGradesFile, bulkGradesUpload, denyStudentAdmission, resendAdmissionLetter, getStudentResults } = require('../controllers/adminController');
 const router = express.Router();
 const multer = require('multer');
 const { studentPhotoStorage, staffPhotoStorage, gradesStorage } = require('../cloudinary');
@@ -58,6 +58,7 @@ router.route('/api/applicant/admit/:id/resend').post(adminProtect, upload.single
 router.route('/api/applicant/deny/:id').post(adminProtect, denyStudentAdmission)
 router.route('/api/applicant/:id').delete(adminProtect, deleteStudent)
 
+
 // Admin -> Student Routes //
 router.route('/api/all-students').get(adminProtect, getAllStudents)
 router.route('/api/student/:id').get(adminProtect, getOneStudent)
@@ -74,7 +75,7 @@ router.route('/api/staff/create').post(adminProtect, createStaff)
 router.route('/api/staff/profile/:id').post(adminProtect, updateStaffProfile)
 router.route('/api/staff/photo/:id').patch(adminProtect, uploadStaffPhoto.single('photo'), updateStaffPhoto)
 router.route('/api/staff/remove/:id').delete(adminProtect, deleteStaff)
-router.route('/api/staff/reset-password').post(adminProtect, updateStaffPassword)
+router.route('/api/staff/password-reset').post(adminProtect, updateStaffPassword)
 router.route('/api/staff/reset-staff-password/:id').post(adminProtect, resetStaffPasswordByAdmin)
 
 // Admin --> Department Routes //
@@ -85,7 +86,7 @@ router.route('/api/staff/department/:id').delete(adminProtect, deleteDepartment)
 
 
 // Admin --> Programmes Routes //
-router.route('/api/staff/programmes').get(adminProtect, getAllProgrammes)
+router.route('/api/staff/programmes').get(getAllProgrammes)
 router.route('/api/staff/programmes/new').post(adminProtect, createProgramme)
 router.route('/api/staff/programmes/:id').get(adminProtect, getOneProgramme)
 router.route('/api/staff/programmes/:id').patch(adminProtect, updateProgramme)
@@ -95,6 +96,7 @@ router.route('/api/staff/course/delete').patch(adminProtect, removeCourse)
 
 // Grading Routes //
 router.route('/api/staff/results/files').get(adminProtect, getAllResultsFiles)
+router.route('/api/staff/results/transcript/:id').get(adminProtect, getStudentResults)
 router.route('/api/staff/results/files').post(adminProtect, uploadGrades.single('grades'), uploadGradesFile)
 
 // Bulk Upload Routes //

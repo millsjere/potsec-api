@@ -12,6 +12,10 @@ const programmeSchema = new mongoose.Schema({
         type: mongoose.ObjectId,
         ref: 'Department'
     },
+    type: {
+        type: String,
+        required: true
+    },
     duration: {
         type: { type: String, lowercase: true },
         number: { type: Number }
@@ -25,7 +29,7 @@ const programmeSchema = new mongoose.Schema({
     tuition: {
         currency: { type: String, default: 'GHS' },
         amount: { type: Number, default: 0 },
-        semester: { type: Number, default: 0 },
+        trimester: { type: Number, default: 0 },
         words: String
     },
 }, {

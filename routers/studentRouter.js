@@ -1,5 +1,5 @@
 const express = require('express');
-const { login, forgetUserPassword, resetUserPassword, verifyUserAccount, resendEmailVerification, changeUserPassword } = require('../controllers/studentController');
+const { login, forgetUserPassword, resetUserPassword, verifyUserAccount, resendEmailVerification, changeUserPassword, getAllNotifications } = require('../controllers/studentController');
 const { studentProtect } = require('../controllers/authController');
 const { checkEmailAndPhone, createStudent, updateStudentProfile, updateStudentPhoto } = require('../controllers/adminController');
 const { studentPhotoStorage } = require('../cloudinary');
@@ -31,6 +31,7 @@ router.route('/api/applicant/check').post(checkEmailAndPhone)
 router.route('/api/applicant/new').post(createStudent)
 router.route('/api/applicant/update/:id').patch(studentProtect, updateStudentProfile)
 router.route('/api/applicant/photo/:id').patch(studentProtect, uploadPhoto.single('photo'), updateStudentPhoto)
+router.route('/api/applicant/notify').get(studentProtect, getAllNotifications)
 
 
 

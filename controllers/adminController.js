@@ -404,6 +404,7 @@ exports.resetStaffPassword = async (req, res) => {
                 from: "POTSEC <noreply@potsec.edu.gh>", // Change to your verified sender
                 subject: "Password Reset Successful",
                 html: registerMessage(
+                    'staff',
                     "POTSEC",
                     user.firstname,
                     "Your password reset was successful. If you did not initiate this, contact support@potsec.edu.gh",
@@ -477,7 +478,7 @@ exports.getOneStudent = async (req, res) => {
             path: 'enrollment.programme',
             populate: {
                 path: 'courses',            // Populate the courses under the programme
-                select: 'name code credit year semester' // Select relevant fields from Course
+                select: 'name code credit year trimester' // Select relevant fields from Course
             }
         }).populate({
             path: 'enrollment.department', select: 'name'
@@ -544,6 +545,7 @@ exports.createStudent = async (req, res) => {
             from: "POTSEC <noreply@potsec.edu.gh>",
             subject: "Welcome to POTSEC",
             html: registerMessage(
+                'student',
                 `Dear ${user.surname}`,
                 `Thank you for applying to POTSEC. To gain access to your portal, use the link and password code below to activate your account. Please ignore this email if you did not register with POTSEC`,
                 password
@@ -769,6 +771,7 @@ exports.createStaff = async (req, res) => {
                 from: "POTSEC <noreply@hiveafrika.com>",
                 subject: "Staff Registration",
                 html: registerMessage(
+                    'staff',
                     `Dear ${user.surname}`,
                     "Welcome to POTSEC. To gain access to your portal, use the password code below to activate your account. Please ignore this email if you did not register with POTSEC",
                     password
@@ -823,7 +826,7 @@ exports.updateStaffPhoto = async (req, res) => {
 
 exports.updateStaffPassword = async (req, res) => {
     try {
-        // console.log(req.body)
+        console.log(req.body)
         const { password, oldPassword } = req.body
         const user = await Staff.findOne({ email: req.user.email }).select('+password')
         if (!user) throw Error('No user account found')
@@ -894,6 +897,7 @@ exports.bulkAddStaff = async (req, res) => {
                     from: "POTSEC <noreply@hiveafrika.com>",
                     subject: "Staff Registration",
                     html: registerMessage(
+                        'staff',
                         `Dear ${surname}`,
                         "Welcome to POTSEC. To gain access to your portal, use the password code below to activate your account.",
                         password
@@ -1126,7 +1130,7 @@ exports.getOneProgramme = async (req, res) => {
         // console.log('Fetching one programme')
         const prog = await Programmes.findById({ _id: req.params.id })
             .populate('department')
-            .populate({ path: 'courses', select: 'name code semester year credit' })
+            .populate({ path: 'courses', select: 'name code trimester year credit' })
             .select('-__v -_id')
         if (!prog) throw Error('Sorry, could not fetch programmes. Please try again');
 
@@ -1150,8 +1154,8 @@ exports.getOneProgramme = async (req, res) => {
 // CREATE PRROGRAMME //
 exports.createProgramme = async (req, res) => {
     try {
-        const { name, department, duration, tuition, certification } = req.body
-        const prog = await Programmes.create({ name, department, duration, tuition, certification })
+        const { name, department, duration, tuition, certification, type } = req.body
+        const prog = await Programmes.create({ name, department, duration, tuition, type, certification })
         if (!prog) throw Error('Sorry, programme creation failed. Please try again');
 
         // send audit //
@@ -1180,7 +1184,7 @@ exports.bulkCreateProgrammes = async (req, res) => {
         // Map through the programmes array and create each programme
         const newProgrammes = await Promise.all(
             programmes.map(async (programme) => {
-                const { name, department, duration, tuition } = programme;
+                const { name, department, duration, tuition, type } = programme;
 
                 // Create a new programme
                 const newProgramme = await Programmes.create({
@@ -1188,7 +1192,7 @@ exports.bulkCreateProgrammes = async (req, res) => {
                     department,
                     duration,
                     tuition,
-                    certification
+                    type
                 });
 
                 return newProgramme._id; // Return the ID of the newly created programme
@@ -1216,7 +1220,7 @@ exports.bulkCreateProgrammes = async (req, res) => {
 exports.updateProgramme = async (req, res) => {
     try {
         const { name, department, duration, tuition, certification } = req.body
-        const prog = await Programmes.findByIdAndUpdate({ _id: req.params.id }, { name, department, duration, tuition, certification })
+        const prog = await Programmes.findByIdAndUpdate({ _id: req.params.id }, { name, department, duration, tuition, certification, type })
         if (!prog) throw Error('Sorry, programme update failed. Please try again');
 
         // send audit //
@@ -1259,9 +1263,9 @@ exports.deleteProgramme = async (req, res) => {
 exports.addCourse = async (req, res) => {
     try {
         const { id, course } = req.body
-        const { name, code, semester, credit, year } = course
+        const { name, code, trimester, credit, year } = course
         // create a new course
-        const newCourse = await Course.create({ name, code, semester, year, credit, program: id })
+        const newCourse = await Course.create({ name, code, trimester, year, credit, program: id })
         // find the program by id and add course id
         const prog = await Programmes.findByIdAndUpdate(id, { $push: { courses: newCourse.id } }, { new: true })
         if (!prog) throw Error('Sorry, adding course failed. Please try again');
@@ -1290,13 +1294,13 @@ exports.bulkAddCourses = async (req, res) => {
         // Map through the courses array and create each course
         const newCourses = await Promise.all(
             courses.map(async (course) => {
-                const { name, code, semester, credit, year } = course;
+                const { name, code, trimester, credit, year } = course;
 
                 // Create a new course and associate it with the program
                 const newCourse = await Course.create({
                     name,
                     code,
-                    semester,
+                    trimester,
                     year,
                     credit,
                     program: id,
@@ -1557,7 +1561,7 @@ exports.searchStaff = async (req, res) => {
 
 exports.searchProgrammes = async (req, res) => {
     try {
-        const { name, department } = req.query;
+        const { name, department, type } = req.query;
 
         // Build the dynamic filter
         const filter = {};
@@ -1572,11 +1576,15 @@ exports.searchProgrammes = async (req, res) => {
             filter.department = department;
         }
 
+        if (type) {
+            filter.type = { $regex: type, $options: 'i' };
+        }
+
         // Check if any filter was provided
         if (Object.keys(filter).length === 0) {
             return res.status(400).json({
                 status: 'failed',
-                message: 'Please provide at least one filter: name or department.',
+                message: 'Please provide at least one filter: name or department or type.',
             });
         }
 
@@ -1660,7 +1668,7 @@ exports.searchStudents = async (req, res) => {
         }
 
         // Find matching students
-        const students = await Student.find(filter);
+        const students = await Student.find(filter).populate('enrollment.programme');
 
         // Return matching students
         res.status(200).json({
@@ -1817,31 +1825,30 @@ exports.updateAdmissionLetter = async (req, res) => {
             });
         }
 
-        // Fully update all fields of the admission letter
-        const updatedAdmissionLetter = await AdmissionLetter.findByIdAndUpdate(
-            {},
-            {
-                startDate,
-                endDate,
-                bank,
-                accountNo,
-                accountName,
-                utilities,
-            },
-            { new: true }  // Overwrites all fields
+        // Update all records
+        const result = await AdmissionLetter.updateMany(
+            {}, // Empty filter means update all documents
+            { startDate, endDate, bank, accountNo, accountName, utilities }
         );
+
+        // Check if any records were updated
+        if (result.modifiedCount === 0) {
+            return res.status(404).json({
+                status: 'failed',
+                message: 'No admission letters found to update.',
+            });
+        }
 
         // Return success response
         res.status(200).json({
             status: 'success',
-            message: 'Admission letter updated successfully.',
-            data: updatedAdmissionLetter,
+            message: `Successfully updated ${result.modifiedCount} admission letters.`,
         });
 
     } catch (error) {
         res.status(500).json({
             status: 'failed',
-            message: 'An error occurred while updating the admission letter.',
+            message: 'An error occurred while updating the admission letters.',
             error: error.message,
         });
     }
@@ -1854,7 +1861,7 @@ exports.getAllResultsFiles = async (req, res) => {
     try {
         const ups = await ResultsUpload.find().populate({
             path: 'course',
-            select: 'name year semester',
+            select: 'name year trimester',
             populate: { path: 'program', select: 'name' }
         }).populate({ path: 'uploadBy', select: 'surname othernames' }).sort({ createdAt: -1 })
         if (!ups) throw Error('Sorry, could not fetch results uploads. Please try again');
@@ -1952,3 +1959,62 @@ exports.uploadGradesFile = async (req, res) => {
         })
     }
 }
+
+exports.getStudentResults = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Fetch student's grades and populate course details
+        const grades = await GradeModel.find({ student: id })
+            .populate({
+                path: "course",
+                select: "name code credit trimester year",
+            });
+
+        if (!grades.length) {
+            return res.status(200).json({
+                status: "no-results",
+                message: "No results found for this student. Please check if student has been graded and try again",
+            });
+        }
+
+        // GPA Mapping
+        const gpaMapping = {
+            "A": 4.0, "B+": 3.5, "B": 3.0,
+            "C+": 2.5, "C": 2.0, "D": 1.0, "E": 0.5, "F": 0.0,
+        };
+
+        // Group results by trimester
+        const resultsBySemester = {};
+        grades.forEach(({ course, grade }) => {
+            const semesterKey = `Year ${course.year} - ${course.trimester}`;
+
+            if (!resultsBySemester[semesterKey]) {
+                resultsBySemester[semesterKey] = { name: semesterKey, courses: [] };
+            }
+
+            resultsBySemester[semesterKey].courses.push({
+                name: course.name,
+                code: course.code,
+                credit: course.credit,
+                grade,
+                gpa: gpaMapping[grade] || 0, // Default to 0 if grade not found
+            });
+        });
+
+        // Convert to array format
+        const formattedResults = Object.values(resultsBySemester);
+
+        res.status(200).json({
+            status: "success",
+            data: formattedResults,
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            status: "failed",
+            message: "An error occurred while fetching student results.",
+            error: error.message,
+        });
+    }
+};

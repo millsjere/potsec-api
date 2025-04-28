@@ -16,7 +16,7 @@ exports.codeMessage = (name, copy, code) => {
     `
 }
 
-exports.registerMessage = (title, copy, code) => {
+exports.registerMessage = (type, title, copy, code) => {
     return `<div style="min-width: 300px; max-width: 500px; margin: 0 auto; border: 1px solid lightgrey; border-radius: 10px; font-family: 'Google Sans'; padding: 30px; background: white">
     <img src='https://res.cloudinary.com/internse-app/image/upload/w_1000,ar_1:1,c_fill,g_auto,e_art:hokusai/v1719771519/logo_2_loioba.png' alt='logo' width='17%' style="display: block; margin: 0 auto; border-radius: 60%" />
     <h2 style="font-weight: 100; font-size: 18px; text-align: left; margin-bottom: -7px">${title}</h2> 
@@ -30,7 +30,7 @@ exports.registerMessage = (title, copy, code) => {
     \n
     \n
         <a style="display: inline-block; cursor: pointer; border: none; border-radius: 5px padding: 10px 17px; text-decoration: none; background: orange; color: white;" 
-            href="https://portal.potsec.edu.gh/staff", target="_blank">Login Here
+            href=${type === 'student' ? "https://portal.potsec.edu.gh/" : "https://portal.potsec.edu.gh/staff"}, target="_blank">Login Here
         </a>
     \n
     \n

@@ -55,8 +55,7 @@ const studentSchema = new mongoose.Schema({
             ref: 'Programmes', // Reference to the Programmes model
         },
         department: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Department', // Reference to the Department model
+            type: String
         },
         certification: { type: String },
         certificationLevel: { type: String },
